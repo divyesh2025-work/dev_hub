@@ -62,6 +62,7 @@ struct ConRevIOCParams {
     uint32_t put_token;
     int32_t  strike_price;
     int32_t  max_lots;
+    int32_t  sol;
     int32_t  spread_threshold;
     bool     is_conversion;
 } __attribute__((packed));
@@ -279,8 +280,10 @@ void cmd_add_conrev_ioc(int fd, uint32_t pf_id)
     uint32_t tmp; 
     std::cout << "Fut Token: ";std::cin >> tmp; params.fut_token = tmp;
     std::cout << "Call Token: ";    std::cin >> tmp;  params.call_token=tmp;
+    std::cout << "Put Token: ";    std::cin >> tmp;  params.put_token=tmp;
     std::cout << "Strike Price: "; std::cin >> tmp;   params.strike_price=tmp;
     std::cout << "Max Lots: ";      std::cin >> tmp;  params.max_lots=tmp;
+    std::cout << "SO: ";      std::cin >> tmp;  params.sol=tmp;
     std::cout << "Spread Threshold: ";std::cin >> tmp;params.spread_threshold=tmp;
     
     char conv;

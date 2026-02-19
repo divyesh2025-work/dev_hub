@@ -1596,12 +1596,13 @@ if (slot.allocated && slot.fn_table.on_order_update)
                             // Build MarketEvent from your StoredMarketDataLatency
                             MarketEvent ev;
                             ev.token = data.token;
-                            ev.timestamp = data.timestamp;
-                            ev.num_bid_levels = 5;
-                            ev.num_ask_levels = 5;
-                            memcpy(ev.bids, &stored.bids[0], sizeof(BookLevel) * 5);
-                            memcpy(ev.asks, &stored.asks[0], sizeof(BookLevel) * 5);
-                            ev.last_traded_price = stored.last_traded_price;
+                            std::memcpy(&ev.bids[0], &data.bids[0], 80);
+                            ev.seqno = data.seqno;
+                            ev.msg_type = data.msg_type;
+                            ev.internal_seqno = data.internal_seqno;
+                            ev.stream_id = data.stream_id;
+                            ev.last_traded_price = data.last_traded_price;
+                            ev.start_time = data.timestamp;
 
                             // HOT PATH: Direct function pointer call to .so
                             slot.fn_table.on_market_event(
@@ -3125,21 +3126,6 @@ int64_t HFTStrategyEngine::api_place_new_order(
         return -2;
     }
     
-
-//     struct StrategyLegData
-// {
-//     uint32_t token;
-//     OrderSide side;
-//     uint16_t portfolio_id;
-//     uint32_t fill_price_sum = 0;
-//     uint32_t fill_qty_sum = 0;
-//     uint32_t ordered_price = 0;
-//     uint32_t required_qty = 0;
-//     uint32_t oms_order_id;
-//     uint64_t exchange_order_id;
-//     uint64_t exchange_modified_time;
-//     OrderState order_state;
-// };
     // Track in oms_to_leg
     engine->oms_to_leg[oms_id] = StrategyLegData{
         .token = token,
@@ -3162,6 +3148,8 @@ int64_t HFTStrategyEngine::api_place_new_order(
     
     return (int64_t)oms_id;
 }
+
+
 
 int32_t HFTStrategyEngine::api_place_modify_order(
     PlatformContext* ctx, uint32_t pf_id,

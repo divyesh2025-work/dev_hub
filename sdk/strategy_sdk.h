@@ -18,14 +18,32 @@ typedef struct {
     int32_t  orders;
 } __attribute__((packed)) BookLevel;
 
+
+    // uint32_t bids[5];
+    // uint32_t asks[5];
+    // uint32_t bids_qty[5];
+    // uint32_t asks_qty[5];
+
+    // long start_time;
+    // uint32_t seqno;
+    // uint32_t internal_seqno;
+    // uint32_t last_traded_price;
+    // uint8_t stream_id;
+    // char msg_type;
+
 typedef struct {
     uint32_t   token;
-    uint64_t   timestamp;
-    uint8_t    num_bid_levels;
-    uint8_t    num_ask_levels;
-    BookLevel  bids[5];
-    BookLevel  asks[5];
-    int64_t    last_traded_price;
+    uint32_t bids[5];
+    uint32_t asks[5];
+    uint32_t bids_qty[5];
+    uint32_t asks_qty[5];
+
+    long start_time;
+    uint32_t seqno;
+    uint32_t internal_seqno;
+    uint32_t last_traded_price;
+    uint8_t stream_id;
+    char msg_type;
 } __attribute__((packed)) MarketEvent;
 
 /* ═══════════════════════════════════════════════════════════

@@ -15,6 +15,7 @@ struct ConRevIOCParams {
     uint32_t put_token;
     int32_t  strike_price;
     int32_t  max_lots;
+    int32_t  sol;
     int32_t  spread_threshold;
     bool     is_conversion;
 } __attribute__((packed));
@@ -62,12 +63,12 @@ static bool compute_opportunity(ConRevIOCState* s, int32_t* spread_out)
 {
     if (!s->fut_valid || !s->call_valid || !s->put_valid) return false;
     
-    int64_t fut_bid = s->fut_market.bids[0].price;
-    int64_t fut_ask = s->fut_market.asks[0].price;
-    int64_t call_bid = s->call_market.bids[0].price;
-    int64_t call_ask = s->call_market.asks[0].price;
-    int64_t put_bid = s->put_market.bids[0].price;
-    int64_t put_ask = s->put_market.asks[0].price;
+    int64_t fut_bid = s->fut_market.bids[0];
+    int64_t fut_ask = s->fut_market.asks[0];
+    int64_t call_bid = s->call_market.bids[0];
+    int64_t call_ask = s->call_market.asks[0];
+    int64_t put_bid = s->put_market.bids[0];
+    int64_t put_ask = s->put_market.asks[0];
     
     int32_t spread;
     if (s->params.is_conversion) {
@@ -346,19 +347,19 @@ static void conrev_on_market_event(void* handle, PlatformContext* ctx,
     if (s->params.is_conversion) {
         // Long Fut + Short Call + Long Put
         s->fut_oms_id  = s->api->place_new_order(ctx, pf_id, s->params.fut_token,  
-                                                  0, s->fut_market.asks[0].price, qty);
+                                                  0, s->fut_market.asks[0], qty);
         s->call_oms_id = s->api->place_new_order(ctx, pf_id, s->params.call_token, 
-                                                  1, s->call_market.bids[0].price, qty);
+                                                  1, s->call_market.bids[0], qty);
         s->put_oms_id  = s->api->place_new_order(ctx, pf_id, s->params.put_token,  
-                                                  0, s->put_market.asks[0].price, qty);
+                                                  0, s->put_market.asks[0], qty);
     } else {
         // Short Fut + Long Call + Short Put
         s->fut_oms_id  = s->api->place_new_order(ctx, pf_id, s->params.fut_token,  
-                                                  1, s->fut_market.bids[0].price, qty);
+                                                  1, s->fut_market.bids[0], qty);
         s->call_oms_id = s->api->place_new_order(ctx, pf_id, s->params.call_token, 
-                                                  0, s->call_market.asks[0].price, qty);
+                                                  0, s->call_market.asks[0], qty);
         s->put_oms_id  = s->api->place_new_order(ctx, pf_id, s->params.put_token,  
-                                                  1, s->put_market.bids[0].price, qty);
+                                                  1, s->put_market.bids[0], qty);
     }
     
     s->legs_sent = true;

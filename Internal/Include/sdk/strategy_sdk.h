@@ -100,6 +100,8 @@ typedef struct {
     OrderState  state;
 } __attribute__((packed)) OpenOrderView;
 
+#pragma pack(push, 1)
+
 struct Leg
 {
     uint32_t symbol_id;
@@ -110,6 +112,7 @@ struct Leg
     uint32_t oms_order_id;
 };
 
+#pragma pack(pop)
 
 /* ═══════════════════════════════════════════════════════════
  * STRATEGY STATUS UPDATE (strategy → frontend)

@@ -1,38 +1,40 @@
 // HFTStrategyEngine.cpp
 #include "HFTStrategyEngine.h"
 
-
 /* ════════════════════════════════════════════════════════════
  * C ABI EXPORTS FOR STRATEGY .so FILES
  * ════════════════════════════════════════════════════════════ */
 // Static API instance
 PlatformAPI HFTStrategyEngine::s_platform_api;
 
-extern "C" {
-
-void platform_subscribe_token(PlatformContext* ctx, uint32_t pf_id, uint32_t token)
+extern "C"
 {
-    HFTStrategyEngine* engine = (HFTStrategyEngine*)ctx;
-    engine->token_to_portfolios[token].insert(pf_id);
-    
-    LOG_FILE("PLATFORM_API", "Subscribe: pf=" + std::to_string(pf_id) + 
-             " token=" + std::to_string(token));
-}
 
-void platform_unsubscribe_token(PlatformContext* ctx, uint32_t pf_id, uint32_t token)
-{
-    HFTStrategyEngine* engine = (HFTStrategyEngine*)ctx;
-    auto it = engine->token_to_portfolios.find(token);
-    if (it != engine->token_to_portfolios.end()) {
-        it->second.erase(pf_id);
-        if (it->second.empty()) {
-            engine->token_to_portfolios.erase(it);
-        }
+    void platform_subscribe_token(PlatformContext *ctx, uint32_t pf_id, uint32_t token)
+    {
+        HFTStrategyEngine *engine = (HFTStrategyEngine *)ctx;
+        engine->token_to_portfolios[token].insert(pf_id);
+
+        LOG_FILE("PLATFORM_API", "Subscribe: pf=" + std::to_string(pf_id) +
+                                     " token=" + std::to_string(token));
     }
-    
-    LOG_FILE("PLATFORM_API", "Unsubscribe: pf=" + std::to_string(pf_id) + 
-             " token=" + std::to_string(token));
-}
+
+    void platform_unsubscribe_token(PlatformContext *ctx, uint32_t pf_id, uint32_t token)
+    {
+        HFTStrategyEngine *engine = (HFTStrategyEngine *)ctx;
+        auto it = engine->token_to_portfolios.find(token);
+        if (it != engine->token_to_portfolios.end())
+        {
+            it->second.erase(pf_id);
+            if (it->second.empty())
+            {
+                engine->token_to_portfolios.erase(it);
+            }
+        }
+
+        LOG_FILE("PLATFORM_API", "Unsubscribe: pf=" + std::to_string(pf_id) +
+                                     " token=" + std::to_string(token));
+    }
 
 } // extern "C"
 
@@ -76,19 +78,17 @@ HFTStrategyEngine::~HFTStrategyEngine()
 {
 }
 
-
 void HFTStrategyEngine::setup_platform_api()
 {
     // s_platform_api.place_new_order_single_leg = api_place_new_order_single_leg;
     s_platform_api.place_new_order_multi_leg = api_place_new_order_multi_leg;
     s_platform_api.place_modify_order = api_place_modify_order;
     s_platform_api.place_cancel_order = api_place_cancel_order;
-    s_platform_api.get_position       = api_get_position;
-    s_platform_api.get_open_orders    = api_get_open_orders;
-    s_platform_api.log_msg            = api_log_msg;
+    s_platform_api.get_position = api_get_position;
+    s_platform_api.get_open_orders = api_get_open_orders;
+    s_platform_api.log_msg = api_log_msg;
     s_platform_api.send_status_update = api_send_status_update;
 
-    
     LOG_FILE(module, "Platform API initialized");
 }
 
@@ -115,7 +115,6 @@ bool HFTStrategyEngine::initialize()
         //         }
         //     }
         // }
-    
     }
 
     if (!socketManager.initialize_network())
@@ -130,18 +129,16 @@ bool HFTStrategyEngine::initialize()
 
     helper::load_nse_fo_contract_file(nse_fo_contract_file);
 
-
-    LOG_LIVE(module,"initi");
+    LOG_LIVE(module, "initi");
     try
     {
         /* code */
         load_strategy_plugin("./strategies/conrev_ioc.so");
     }
-    catch(const std::exception& e)
+    catch (const std::exception &e)
     {
         std::cout << e.what() << 'SO not loaded\n';
     }
-    
 
     return true;
 }
@@ -215,23 +212,23 @@ void HFTStrategyEngine::run()
 
         auto now_clock = Clock::now();
 
-        if (__builtin_expect( (now_clock - last_market_event_time > std::chrono::seconds(30)), 0))[[unlikely]]
+        if (__builtin_expect((now_clock - last_market_event_time > std::chrono::seconds(30)), 0)) [[unlikely]]
         {
-            for(auto stream_data : stream_to_sequence)
+            for (auto stream_data : stream_to_sequence)
             {
-                if(now_clock-stream_data.second.last_time >  std::chrono::seconds(30))[[unlikely]]
+                if (now_clock - stream_data.second.last_time > std::chrono::seconds(30)) [[unlikely]]
                 {
                     std::unordered_set<uint16_t> portfolio_ids = stream_data.second.portfolio_ids;
-                    for(auto portfolio_id : portfolio_ids)
+                    for (auto portfolio_id : portfolio_ids)
                     {
-                        std::cout<<"Stopping porfolio id due to tick stale :" << portfolio_id<<std::endl;
-                        // Portfolio &strat = portfolios[portfolio_id]; 
+                        std::cout << "Stopping porfolio id due to tick stale :" << portfolio_id << std::endl;
+                        // Portfolio &strat = portfolios[portfolio_id];
                         // strat.stop_requested = true;
                         // strat.stop_reason = UpdateReason::TickStale;
                     }
                 }
-            }                
-            last_market_event_time = now_clock; 
+            }
+            last_market_event_time = now_clock;
         }
 
         int event_count = epoll_wait(
@@ -496,9 +493,9 @@ void HFTStrategyEngine::run()
                         push_oms_data(leg);
 
                         // After handling Fill, PartialFill, NewOrderAck, etc.
-// ADD this to call strategy callback:
+                        // ADD this to call strategy callback:
 
-                        PortfolioSlot& slot = portfolio_slots[portfolio_id];
+                        PortfolioSlot &slot = portfolio_slots[portfolio_id];
                         if (slot.allocated && slot.fn_table.on_order_update)
                         {
                             OrderUpdate upd;
@@ -510,12 +507,11 @@ void HFTStrategyEngine::run()
                             upd.ordered_price = leg.ordered_price;
                             upd.ordered_qty = leg.required_qty;
                             upd.filled_qty = leg.fill_qty_sum;
-                            upd.avg_fill_price = leg.fill_qty_sum > 0 ? 
-                                                leg.fill_price_sum / leg.fill_qty_sum : 0;
-                            
+                            upd.avg_fill_price = leg.fill_qty_sum > 0 ? leg.fill_price_sum / leg.fill_qty_sum : 0;
+
                             slot.fn_table.on_order_update(
                                 slot.strategy_handle,
-                                (PlatformContext*)this,
+                                (PlatformContext *)this,
                                 portfolio_id,
                                 &upd);
                         }
@@ -576,31 +572,29 @@ void HFTStrategyEngine::run()
                         push_oms_data(leg);
                         // push_order_data(strat);
 
-
                         // After handling Fill, PartialFill, NewOrderAck, etc.
-// ADD this to call strategy callback:
+                        // ADD this to call strategy callback:
 
-PortfolioSlot& slot = portfolio_slots[portfolio_id];
-if (slot.allocated && slot.fn_table.on_order_update)
-{
-    OrderUpdate upd;
-    upd.oms_order_id = oms_order_id;
-    upd.exchange_order_id = leg.exchange_order_id;
-    upd.token = leg.token;
-    upd.side = (uint8_t)leg.side;
-    upd.state = leg.order_state;
-    upd.ordered_price = leg.ordered_price;
-    upd.ordered_qty = leg.required_qty;
-    upd.filled_qty = leg.fill_qty_sum;
-    upd.avg_fill_price = leg.fill_qty_sum > 0 ? 
-                         leg.fill_price_sum / leg.fill_qty_sum : 0;
-    
-    slot.fn_table.on_order_update(
-        slot.strategy_handle,
-        (PlatformContext*)this,
-        portfolio_id,
-        &upd);
-}
+                        PortfolioSlot &slot = portfolio_slots[portfolio_id];
+                        if (slot.allocated && slot.fn_table.on_order_update)
+                        {
+                            OrderUpdate upd;
+                            upd.oms_order_id = oms_order_id;
+                            upd.exchange_order_id = leg.exchange_order_id;
+                            upd.token = leg.token;
+                            upd.side = (uint8_t)leg.side;
+                            upd.state = leg.order_state;
+                            upd.ordered_price = leg.ordered_price;
+                            upd.ordered_qty = leg.required_qty;
+                            upd.filled_qty = leg.fill_qty_sum;
+                            upd.avg_fill_price = leg.fill_qty_sum > 0 ? leg.fill_price_sum / leg.fill_qty_sum : 0;
+
+                            slot.fn_table.on_order_update(
+                                slot.strategy_handle,
+                                (PlatformContext *)this,
+                                portfolio_id,
+                                &upd);
+                        }
 
                         break;
                     }
@@ -663,29 +657,28 @@ if (slot.allocated && slot.fn_table.on_order_update)
                         // push_order_data(strat);
 
                         // After handling Fill, PartialFill, NewOrderAck, etc.
-// ADD this to call strategy callback:
+                        // ADD this to call strategy callback:
 
-PortfolioSlot& slot = portfolio_slots[portfolio_id];
-if (slot.allocated && slot.fn_table.on_order_update)
-{
-    OrderUpdate upd;
-    upd.oms_order_id = oms_order_id;
-    upd.exchange_order_id = leg.exchange_order_id;
-    upd.token = leg.token;
-    upd.side = (uint8_t)leg.side;
-    upd.state = leg.order_state;
-    upd.ordered_price = leg.ordered_price;
-    upd.ordered_qty = leg.required_qty;
-    upd.filled_qty = leg.fill_qty_sum;
-    upd.avg_fill_price = leg.fill_qty_sum > 0 ? 
-                         leg.fill_price_sum / leg.fill_qty_sum : 0;
-    
-    slot.fn_table.on_order_update(
-        slot.strategy_handle,
-        (PlatformContext*)this,
-        portfolio_id,
-        &upd);
-}
+                        PortfolioSlot &slot = portfolio_slots[portfolio_id];
+                        if (slot.allocated && slot.fn_table.on_order_update)
+                        {
+                            OrderUpdate upd;
+                            upd.oms_order_id = oms_order_id;
+                            upd.exchange_order_id = leg.exchange_order_id;
+                            upd.token = leg.token;
+                            upd.side = (uint8_t)leg.side;
+                            upd.state = leg.order_state;
+                            upd.ordered_price = leg.ordered_price;
+                            upd.ordered_qty = leg.required_qty;
+                            upd.filled_qty = leg.fill_qty_sum;
+                            upd.avg_fill_price = leg.fill_qty_sum > 0 ? leg.fill_price_sum / leg.fill_qty_sum : 0;
+
+                            slot.fn_table.on_order_update(
+                                slot.strategy_handle,
+                                (PlatformContext *)this,
+                                portfolio_id,
+                                &upd);
+                        }
 
                         break;
                     }
@@ -730,29 +723,28 @@ if (slot.allocated && slot.fn_table.on_order_update)
                         push_oms_data(leg);
 
                         // After handling Fill, PartialFill, NewOrderAck, etc.
-// ADD this to call strategy callback:
+                        // ADD this to call strategy callback:
 
-PortfolioSlot& slot = portfolio_slots[portfolio_id];
-if (slot.allocated && slot.fn_table.on_order_update)
-{
-    OrderUpdate upd;
-    upd.oms_order_id = oms_order_id;
-    upd.exchange_order_id = leg.exchange_order_id;
-    upd.token = leg.token;
-    upd.side = (uint8_t)leg.side;
-    upd.state = leg.order_state;
-    upd.ordered_price = leg.ordered_price;
-    upd.ordered_qty = leg.required_qty;
-    upd.filled_qty = leg.fill_qty_sum;
-    upd.avg_fill_price = leg.fill_qty_sum > 0 ? 
-                         leg.fill_price_sum / leg.fill_qty_sum : 0;
-    
-    slot.fn_table.on_order_update(
-        slot.strategy_handle,
-        (PlatformContext*)this,
-        portfolio_id,
-        &upd);
-}
+                        PortfolioSlot &slot = portfolio_slots[portfolio_id];
+                        if (slot.allocated && slot.fn_table.on_order_update)
+                        {
+                            OrderUpdate upd;
+                            upd.oms_order_id = oms_order_id;
+                            upd.exchange_order_id = leg.exchange_order_id;
+                            upd.token = leg.token;
+                            upd.side = (uint8_t)leg.side;
+                            upd.state = leg.order_state;
+                            upd.ordered_price = leg.ordered_price;
+                            upd.ordered_qty = leg.required_qty;
+                            upd.filled_qty = leg.fill_qty_sum;
+                            upd.avg_fill_price = leg.fill_qty_sum > 0 ? leg.fill_price_sum / leg.fill_qty_sum : 0;
+
+                            slot.fn_table.on_order_update(
+                                slot.strategy_handle,
+                                (PlatformContext *)this,
+                                portfolio_id,
+                                &upd);
+                        }
 
                         break;
                     }
@@ -810,29 +802,28 @@ if (slot.allocated && slot.fn_table.on_order_update)
                         // push_order_data(strat);
 
                         // After handling Fill, PartialFill, NewOrderAck, etc.
-// ADD this to call strategy callback:
+                        // ADD this to call strategy callback:
 
-PortfolioSlot& slot = portfolio_slots[portfolio_id];
-if (slot.allocated && slot.fn_table.on_order_update)
-{
-    OrderUpdate upd;
-    upd.oms_order_id = oms_order_id;
-    upd.exchange_order_id = leg.exchange_order_id;
-    upd.token = leg.token;
-    upd.side = (uint8_t)leg.side;
-    upd.state = leg.order_state;
-    upd.ordered_price = leg.ordered_price;
-    upd.ordered_qty = leg.required_qty;
-    upd.filled_qty = leg.fill_qty_sum;
-    upd.avg_fill_price = leg.fill_qty_sum > 0 ? 
-                         leg.fill_price_sum / leg.fill_qty_sum : 0;
-    
-    slot.fn_table.on_order_update(
-        slot.strategy_handle,
-        (PlatformContext*)this,
-        portfolio_id,
-        &upd);
-}
+                        PortfolioSlot &slot = portfolio_slots[portfolio_id];
+                        if (slot.allocated && slot.fn_table.on_order_update)
+                        {
+                            OrderUpdate upd;
+                            upd.oms_order_id = oms_order_id;
+                            upd.exchange_order_id = leg.exchange_order_id;
+                            upd.token = leg.token;
+                            upd.side = (uint8_t)leg.side;
+                            upd.state = leg.order_state;
+                            upd.ordered_price = leg.ordered_price;
+                            upd.ordered_qty = leg.required_qty;
+                            upd.filled_qty = leg.fill_qty_sum;
+                            upd.avg_fill_price = leg.fill_qty_sum > 0 ? leg.fill_price_sum / leg.fill_qty_sum : 0;
+
+                            slot.fn_table.on_order_update(
+                                slot.strategy_handle,
+                                (PlatformContext *)this,
+                                portfolio_id,
+                                &upd);
+                        }
 
                         break;
                     }
@@ -914,29 +905,28 @@ if (slot.allocated && slot.fn_table.on_order_update)
                         push_oms_data(leg);
                         // push_order_data(strat);
                         // After handling Fill, PartialFill, NewOrderAck, etc.
-// ADD this to call strategy callback:
+                        // ADD this to call strategy callback:
 
-PortfolioSlot& slot = portfolio_slots[portfolio_id];
-if (slot.allocated && slot.fn_table.on_order_update)
-{
-    OrderUpdate upd;
-    upd.oms_order_id = oms_order_id;
-    upd.exchange_order_id = leg.exchange_order_id;
-    upd.token = leg.token;
-    upd.side = (uint8_t)leg.side;
-    upd.state = leg.order_state;
-    upd.ordered_price = leg.ordered_price;
-    upd.ordered_qty = leg.required_qty;
-    upd.filled_qty = leg.fill_qty_sum;
-    upd.avg_fill_price = leg.fill_qty_sum > 0 ? 
-                         leg.fill_price_sum / leg.fill_qty_sum : 0;
-    
-    slot.fn_table.on_order_update(
-        slot.strategy_handle,
-        (PlatformContext*)this,
-        portfolio_id,
-        &upd);
-}
+                        PortfolioSlot &slot = portfolio_slots[portfolio_id];
+                        if (slot.allocated && slot.fn_table.on_order_update)
+                        {
+                            OrderUpdate upd;
+                            upd.oms_order_id = oms_order_id;
+                            upd.exchange_order_id = leg.exchange_order_id;
+                            upd.token = leg.token;
+                            upd.side = (uint8_t)leg.side;
+                            upd.state = leg.order_state;
+                            upd.ordered_price = leg.ordered_price;
+                            upd.ordered_qty = leg.required_qty;
+                            upd.filled_qty = leg.fill_qty_sum;
+                            upd.avg_fill_price = leg.fill_qty_sum > 0 ? leg.fill_price_sum / leg.fill_qty_sum : 0;
+
+                            slot.fn_table.on_order_update(
+                                slot.strategy_handle,
+                                (PlatformContext *)this,
+                                portfolio_id,
+                                &upd);
+                        }
 
                         break;
                     }
@@ -979,29 +969,28 @@ if (slot.allocated && slot.fn_table.on_order_update)
                         push_oms_data(leg);
                         // push_order_data(strat);
                         // After handling Fill, PartialFill, NewOrderAck, etc.
-// ADD this to call strategy callback:
+                        // ADD this to call strategy callback:
 
-PortfolioSlot& slot = portfolio_slots[portfolio_id];
-if (slot.allocated && slot.fn_table.on_order_update)
-{
-    OrderUpdate upd;
-    upd.oms_order_id = oms_order_id;
-    upd.exchange_order_id = leg.exchange_order_id;
-    upd.token = leg.token;
-    upd.side = (uint8_t)leg.side;
-    upd.state = leg.order_state;
-    upd.ordered_price = leg.ordered_price;
-    upd.ordered_qty = leg.required_qty;
-    upd.filled_qty = leg.fill_qty_sum;
-    upd.avg_fill_price = leg.fill_qty_sum > 0 ? 
-                         leg.fill_price_sum / leg.fill_qty_sum : 0;
-    
-    slot.fn_table.on_order_update(
-        slot.strategy_handle,
-        (PlatformContext*)this,
-        portfolio_id,
-        &upd);
-}
+                        PortfolioSlot &slot = portfolio_slots[portfolio_id];
+                        if (slot.allocated && slot.fn_table.on_order_update)
+                        {
+                            OrderUpdate upd;
+                            upd.oms_order_id = oms_order_id;
+                            upd.exchange_order_id = leg.exchange_order_id;
+                            upd.token = leg.token;
+                            upd.side = (uint8_t)leg.side;
+                            upd.state = leg.order_state;
+                            upd.ordered_price = leg.ordered_price;
+                            upd.ordered_qty = leg.required_qty;
+                            upd.filled_qty = leg.fill_qty_sum;
+                            upd.avg_fill_price = leg.fill_qty_sum > 0 ? leg.fill_price_sum / leg.fill_qty_sum : 0;
+
+                            slot.fn_table.on_order_update(
+                                slot.strategy_handle,
+                                (PlatformContext *)this,
+                                portfolio_id,
+                                &upd);
+                        }
 
                         break;
                     }
@@ -1044,29 +1033,28 @@ if (slot.allocated && slot.fn_table.on_order_update)
 
                         // push_portfolio(strat);
                         // After handling Fill, PartialFill, NewOrderAck, etc.
-// ADD this to call strategy callback:
+                        // ADD this to call strategy callback:
 
-PortfolioSlot& slot = portfolio_slots[portfolio_id];
-if (slot.allocated && slot.fn_table.on_order_update)
-{
-    OrderUpdate upd;
-    upd.oms_order_id = oms_order_id;
-    upd.exchange_order_id = leg.exchange_order_id;
-    upd.token = leg.token;
-    upd.side = (uint8_t)leg.side;
-    upd.state = leg.order_state;
-    upd.ordered_price = leg.ordered_price;
-    upd.ordered_qty = leg.required_qty;
-    upd.filled_qty = leg.fill_qty_sum;
-    upd.avg_fill_price = leg.fill_qty_sum > 0 ? 
-                         leg.fill_price_sum / leg.fill_qty_sum : 0;
-    
-    slot.fn_table.on_order_update(
-        slot.strategy_handle,
-        (PlatformContext*)this,
-        portfolio_id,
-        &upd);
-}
+                        PortfolioSlot &slot = portfolio_slots[portfolio_id];
+                        if (slot.allocated && slot.fn_table.on_order_update)
+                        {
+                            OrderUpdate upd;
+                            upd.oms_order_id = oms_order_id;
+                            upd.exchange_order_id = leg.exchange_order_id;
+                            upd.token = leg.token;
+                            upd.side = (uint8_t)leg.side;
+                            upd.state = leg.order_state;
+                            upd.ordered_price = leg.ordered_price;
+                            upd.ordered_qty = leg.required_qty;
+                            upd.filled_qty = leg.fill_qty_sum;
+                            upd.avg_fill_price = leg.fill_qty_sum > 0 ? leg.fill_price_sum / leg.fill_qty_sum : 0;
+
+                            slot.fn_table.on_order_update(
+                                slot.strategy_handle,
+                                (PlatformContext *)this,
+                                portfolio_id,
+                                &upd);
+                        }
 
                         push_oms_data(leg);
 
@@ -1109,29 +1097,28 @@ if (slot.allocated && slot.fn_table.on_order_update)
                         // push_order_data(strat);
 
                         // After handling Fill, PartialFill, NewOrderAck, etc.
-// ADD this to call strategy callback:
+                        // ADD this to call strategy callback:
 
-PortfolioSlot& slot = portfolio_slots[portfolio_id];
-if (slot.allocated && slot.fn_table.on_order_update)
-{
-    OrderUpdate upd;
-    upd.oms_order_id = oms_order_id;
-    upd.exchange_order_id = leg.exchange_order_id;
-    upd.token = leg.token;
-    upd.side = (uint8_t)leg.side;
-    upd.state = leg.order_state;
-    upd.ordered_price = leg.ordered_price;
-    upd.ordered_qty = leg.required_qty;
-    upd.filled_qty = leg.fill_qty_sum;
-    upd.avg_fill_price = leg.fill_qty_sum > 0 ? 
-                         leg.fill_price_sum / leg.fill_qty_sum : 0;
-    
-    slot.fn_table.on_order_update(
-        slot.strategy_handle,
-        (PlatformContext*)this,
-        portfolio_id,
-        &upd);
-}
+                        PortfolioSlot &slot = portfolio_slots[portfolio_id];
+                        if (slot.allocated && slot.fn_table.on_order_update)
+                        {
+                            OrderUpdate upd;
+                            upd.oms_order_id = oms_order_id;
+                            upd.exchange_order_id = leg.exchange_order_id;
+                            upd.token = leg.token;
+                            upd.side = (uint8_t)leg.side;
+                            upd.state = leg.order_state;
+                            upd.ordered_price = leg.ordered_price;
+                            upd.ordered_qty = leg.required_qty;
+                            upd.filled_qty = leg.fill_qty_sum;
+                            upd.avg_fill_price = leg.fill_qty_sum > 0 ? leg.fill_price_sum / leg.fill_qty_sum : 0;
+
+                            slot.fn_table.on_order_update(
+                                slot.strategy_handle,
+                                (PlatformContext *)this,
+                                portfolio_id,
+                                &upd);
+                        }
 
                         break;
                     }
@@ -1173,9 +1160,9 @@ if (slot.allocated && slot.fn_table.on_order_update)
                         // push_order_data(strat);
 
                         // After handling Fill, PartialFill, NewOrderAck, etc.
-// ADD this to call strategy callback:
+                        // ADD this to call strategy callback:
 
-                        PortfolioSlot& slot = portfolio_slots[portfolio_id];
+                        PortfolioSlot &slot = portfolio_slots[portfolio_id];
                         if (slot.allocated && slot.fn_table.on_order_update)
                         {
                             OrderUpdate upd;
@@ -1187,12 +1174,11 @@ if (slot.allocated && slot.fn_table.on_order_update)
                             upd.ordered_price = leg.ordered_price;
                             upd.ordered_qty = leg.required_qty;
                             upd.filled_qty = leg.fill_qty_sum;
-                            upd.avg_fill_price = leg.fill_qty_sum > 0 ? 
-                                                leg.fill_price_sum / leg.fill_qty_sum : 0;
-                            
+                            upd.avg_fill_price = leg.fill_qty_sum > 0 ? leg.fill_price_sum / leg.fill_qty_sum : 0;
+
                             slot.fn_table.on_order_update(
                                 slot.strategy_handle,
-                                (PlatformContext*)this,
+                                (PlatformContext *)this,
                                 portfolio_id,
                                 &upd);
                         }
@@ -1274,29 +1260,28 @@ if (slot.allocated && slot.fn_table.on_order_update)
                         // push_portfolio(strat);
 
                         // After handling Fill, PartialFill, NewOrderAck, etc.
-// ADD this to call strategy callback:
+                        // ADD this to call strategy callback:
 
-PortfolioSlot& slot = portfolio_slots[portfolio_id];
-if (slot.allocated && slot.fn_table.on_order_update)
-{
-    OrderUpdate upd;
-    upd.oms_order_id = oms_order_id;
-    upd.exchange_order_id = leg.exchange_order_id;
-    upd.token = leg.token;
-    upd.side = (uint8_t)leg.side;
-    upd.state = leg.order_state;
-    upd.ordered_price = leg.ordered_price;
-    upd.ordered_qty = leg.required_qty;
-    upd.filled_qty = leg.fill_qty_sum;
-    upd.avg_fill_price = leg.fill_qty_sum > 0 ? 
-                         leg.fill_price_sum / leg.fill_qty_sum : 0;
-    
-    slot.fn_table.on_order_update(
-        slot.strategy_handle,
-        (PlatformContext*)this,
-        portfolio_id,
-        &upd);
-}
+                        PortfolioSlot &slot = portfolio_slots[portfolio_id];
+                        if (slot.allocated && slot.fn_table.on_order_update)
+                        {
+                            OrderUpdate upd;
+                            upd.oms_order_id = oms_order_id;
+                            upd.exchange_order_id = leg.exchange_order_id;
+                            upd.token = leg.token;
+                            upd.side = (uint8_t)leg.side;
+                            upd.state = leg.order_state;
+                            upd.ordered_price = leg.ordered_price;
+                            upd.ordered_qty = leg.required_qty;
+                            upd.filled_qty = leg.fill_qty_sum;
+                            upd.avg_fill_price = leg.fill_qty_sum > 0 ? leg.fill_price_sum / leg.fill_qty_sum : 0;
+
+                            slot.fn_table.on_order_update(
+                                slot.strategy_handle,
+                                (PlatformContext *)this,
+                                portfolio_id,
+                                &upd);
+                        }
 
                         push_oms_data(leg);
 
@@ -1316,7 +1301,6 @@ if (slot.allocated && slot.fn_table.on_order_update)
                         // Portfolio &strat = portfolios[portfolio_id];
                         // strat.stop_requested = true; // [[IMPORTANT STOPPING STRATEGY]]
                         // strat.stop_reason = UpdateReason::RMSReject;
-                       
 
                         // strat.is_active = false;
                         // if (strat.is_iter_over)
@@ -1342,7 +1326,7 @@ if (slot.allocated && slot.fn_table.on_order_update)
                         //     }
                         // }
                         /////////////////////////
-                        // CHANGING MODIFY FAILED TO STOP STRATEGY 
+                        // CHANGING MODIFY FAILED TO STOP STRATEGY
                         ///////////////////////////
 
                         // handleModifyReject(strat, leg.oms_order_id, leg.required_qty);
@@ -1371,29 +1355,28 @@ if (slot.allocated && slot.fn_table.on_order_update)
                         // push_portfolio(strat);
 
                         // After handling Fill, PartialFill, NewOrderAck, etc.
-// ADD this to call strategy callback:
+                        // ADD this to call strategy callback:
 
-PortfolioSlot& slot = portfolio_slots[portfolio_id];
-if (slot.allocated && slot.fn_table.on_order_update)
-{
-    OrderUpdate upd;
-    upd.oms_order_id = oms_order_id;
-    upd.exchange_order_id = leg.exchange_order_id;
-    upd.token = leg.token;
-    upd.side = (uint8_t)leg.side;
-    upd.state = leg.order_state;
-    upd.ordered_price = leg.ordered_price;
-    upd.ordered_qty = leg.required_qty;
-    upd.filled_qty = leg.fill_qty_sum;
-    upd.avg_fill_price = leg.fill_qty_sum > 0 ? 
-                         leg.fill_price_sum / leg.fill_qty_sum : 0;
-    
-    slot.fn_table.on_order_update(
-        slot.strategy_handle,
-        (PlatformContext*)this,
-        portfolio_id,
-        &upd);
-}
+                        PortfolioSlot &slot = portfolio_slots[portfolio_id];
+                        if (slot.allocated && slot.fn_table.on_order_update)
+                        {
+                            OrderUpdate upd;
+                            upd.oms_order_id = oms_order_id;
+                            upd.exchange_order_id = leg.exchange_order_id;
+                            upd.token = leg.token;
+                            upd.side = (uint8_t)leg.side;
+                            upd.state = leg.order_state;
+                            upd.ordered_price = leg.ordered_price;
+                            upd.ordered_qty = leg.required_qty;
+                            upd.filled_qty = leg.fill_qty_sum;
+                            upd.avg_fill_price = leg.fill_qty_sum > 0 ? leg.fill_price_sum / leg.fill_qty_sum : 0;
+
+                            slot.fn_table.on_order_update(
+                                slot.strategy_handle,
+                                (PlatformContext *)this,
+                                portfolio_id,
+                                &upd);
+                        }
 
                         push_oms_data(leg);
 
@@ -1438,29 +1421,28 @@ if (slot.allocated && slot.fn_table.on_order_update)
                         // push_order_data(strat);
 
                         // After handling Fill, PartialFill, NewOrderAck, etc.
-// ADD this to call strategy callback:
+                        // ADD this to call strategy callback:
 
-PortfolioSlot& slot = portfolio_slots[portfolio_id];
-if (slot.allocated && slot.fn_table.on_order_update)
-{
-    OrderUpdate upd;
-    upd.oms_order_id = oms_order_id;
-    upd.exchange_order_id = leg.exchange_order_id;
-    upd.token = leg.token;
-    upd.side = (uint8_t)leg.side;
-    upd.state = leg.order_state;
-    upd.ordered_price = leg.ordered_price;
-    upd.ordered_qty = leg.required_qty;
-    upd.filled_qty = leg.fill_qty_sum;
-    upd.avg_fill_price = leg.fill_qty_sum > 0 ? 
-                         leg.fill_price_sum / leg.fill_qty_sum : 0;
-    
-    slot.fn_table.on_order_update(
-        slot.strategy_handle,
-        (PlatformContext*)this,
-        portfolio_id,
-        &upd);
-}
+                        PortfolioSlot &slot = portfolio_slots[portfolio_id];
+                        if (slot.allocated && slot.fn_table.on_order_update)
+                        {
+                            OrderUpdate upd;
+                            upd.oms_order_id = oms_order_id;
+                            upd.exchange_order_id = leg.exchange_order_id;
+                            upd.token = leg.token;
+                            upd.side = (uint8_t)leg.side;
+                            upd.state = leg.order_state;
+                            upd.ordered_price = leg.ordered_price;
+                            upd.ordered_qty = leg.required_qty;
+                            upd.filled_qty = leg.fill_qty_sum;
+                            upd.avg_fill_price = leg.fill_qty_sum > 0 ? leg.fill_price_sum / leg.fill_qty_sum : 0;
+
+                            slot.fn_table.on_order_update(
+                                slot.strategy_handle,
+                                (PlatformContext *)this,
+                                portfolio_id,
+                                &upd);
+                        }
 
                         break;
                     }
@@ -1523,41 +1505,37 @@ if (slot.allocated && slot.fn_table.on_order_update)
                         continue; // Drop malformed packets
                     }
 
-                    TimePoint& last = stream_to_sequence[data.stream_id].last_time;
-                    uint32_t& last_seq = stream_to_sequence[data.stream_id].seq_no;
+                    TimePoint &last = stream_to_sequence[data.stream_id].last_time;
+                    uint32_t &last_seq = stream_to_sequence[data.stream_id].seq_no;
 
                     auto diff = now - last;
                     auto diff_sec = std::chrono::duration_cast<std::chrono::seconds>(diff).count();
 
-                    
-
-
-                    if (data.internal_seqno - last_seq != 1   ||  (diff_sec >30) ) [[unlikely]]
+                    if (data.internal_seqno - last_seq != 1 || (diff_sec > 30)) [[unlikely]]
                     {
                         std::cout << module
-                            << " Sequence Mismatch for stream "
-                            << static_cast<int>(data.stream_id)
-                            << " last seq: " << last_seq
-                            << " current seq: " << data.internal_seqno
-                            << " token: " << data.token
-                            << std::endl;
+                                  << " Sequence Mismatch for stream "
+                                  << static_cast<int>(data.stream_id)
+                                  << " last seq: " << last_seq
+                                  << " current seq: " << data.internal_seqno
+                                  << " token: " << data.token
+                                  << std::endl;
 
                         std::cout << module
-                                << " Delay detected for stream "
-                                << static_cast<int>(data.stream_id)
-                                << " delay: " << diff_sec << " sec"
-                                << " token: " << data.token
-                                << std::endl;
+                                  << " Delay detected for stream "
+                                  << static_cast<int>(data.stream_id)
+                                  << " delay: " << diff_sec << " sec"
+                                  << " token: " << data.token
+                                  << std::endl;
 
-
-                        if((diff_sec >30)) [[unlikely]]
+                        if ((diff_sec > 30)) [[unlikely]]
                         {
                             // stopping all portfolio which has tick stale
                             std::unordered_set<uint16_t> portfolio_ids = stream_to_sequence[data.stream_id].portfolio_ids;
-                            for(auto portfolio_id : portfolio_ids)
+                            for (auto portfolio_id : portfolio_ids)
                             {
-                                std::cout<<"Stopping porfolio id due to tick stale :" << portfolio_id<<std::endl;
-                                // Portfolio &strat = portfolios[portfolio_id]; 
+                                std::cout << "Stopping porfolio id due to tick stale :" << portfolio_id << std::endl;
+                                // Portfolio &strat = portfolios[portfolio_id];
                                 // strat.stop_requested = true;
                                 // strat.stop_reason = UpdateReason::TickStale;
                             }
@@ -1567,12 +1545,8 @@ if (slot.allocated && slot.fn_table.on_order_update)
                     last = now;
                     last_seq = data.internal_seqno;
 
-
-                    
-
-                   
                     StoredMarketDataLatency &stored = orderbook[data.token];
-                    
+
                     std::memcpy(&stored.bids[0], &data.bids[0], 80);
                     stored.seqno = data.seqno;
                     stored.msg_type = data.msg_type;
@@ -1580,7 +1554,7 @@ if (slot.allocated && slot.fn_table.on_order_update)
                     stored.stream_id = data.stream_id;
                     stored.last_traded_price = data.last_traded_price;
                     stored.start_time = data.timestamp;
-                   
+
                     auto portfolio_it = token_to_portfolios.find(data.token);
 
                     if (portfolio_it != token_to_portfolios.end()) [[likely]]
@@ -1588,7 +1562,7 @@ if (slot.allocated && slot.fn_table.on_order_update)
                         for (auto portfolio_id : portfolio_it->second)
                         {
 
-                            PortfolioSlot& slot = portfolio_slots[portfolio_id];
+                            PortfolioSlot &slot = portfolio_slots[portfolio_id];
                             if (!slot.allocated || !slot.fn_table.on_market_event) [[unlikely]]
                             {
                                 continue;
@@ -1608,10 +1582,10 @@ if (slot.allocated && slot.fn_table.on_order_update)
                             // HOT PATH: Direct function pointer call to .so
                             slot.fn_table.on_market_event(
                                 slot.strategy_handle,
-                                (PlatformContext*)this,
+                                (PlatformContext *)this,
                                 portfolio_id,
                                 &ev);
-                            
+
                             // Portfolio &strat = portfolios[portfolio_id];
                             // if (!strat.is_active) [[unlikely]]
                             // {
@@ -1651,7 +1625,7 @@ if (slot.allocated && slot.fn_table.on_order_update)
                             // //     snap.data.conrev.put = put_it->second;
 
                             // //     strat.is_iter_over = false;
-                               
+
                             // //     bool sent = executeStrategy(strat, snap, *order_manager, st);
                             // //     strat.is_iter_over = true;
 
@@ -1672,7 +1646,7 @@ if (slot.allocated && slot.fn_table.on_order_update)
                             // //         }
                             // //         else
                             // //         {
-                            // //             update_msg.update.update_reason = strat.stop_reason; 
+                            // //             update_msg.update.update_reason = strat.stop_reason;
                             // //         }
                             // //         LOG_FILE(module, "Sending to frontend9");
 
@@ -1693,12 +1667,8 @@ if (slot.allocated && slot.fn_table.on_order_update)
                             // push_order_data(strat); // pushing data to db
                             // push_portfolio(strat);
                             //////////////////////////////////////////////////////////
-
                         }
                     }
-                   
-                   
-                   
                 }
                 break;
             }
@@ -1753,7 +1723,7 @@ void HFTStrategyEngine::handle_frontend_event()
         {
             LOG_COUT("Frontend Disconnected\n");
             LOG_FILE(module, "Frontend Disconnected");
-            
+
             // Stop all active portfolios
             for (int i = 0; i < MAX_PORTFOLIOS; i++)
             {
@@ -1763,7 +1733,7 @@ void HFTStrategyEngine::handle_frontend_event()
                     uint32_t dummy_len;
                     portfolio_slots[i].fn_table.on_stop(
                         portfolio_slots[i].strategy_handle,
-                        (PlatformContext*)this,
+                        (PlatformContext *)this,
                         i,
                         dummy_resp,
                         &dummy_len);
@@ -1784,7 +1754,7 @@ void HFTStrategyEngine::handle_frontend_event()
     while (frontend_rx_buffer.available() >= sizeof(FrontendCommand))
     {
         FrontendCommand cmd;
-        const FrontendCommand* cmd_ptr = frontend_rx_buffer.peek();
+        const FrontendCommand *cmd_ptr = frontend_rx_buffer.peek();
 
         if (cmd_ptr) [[likely]]
         {
@@ -1801,8 +1771,8 @@ void HFTStrategyEngine::handle_frontend_event()
 
         frontend_rx_buffer.consume(sizeof(FrontendCommand));
 
-        LOG_FILE(module, "Processing frontend command: type=" + 
-                 std::to_string((int)cmd.cmd_type) + " pf_id=" + std::to_string(cmd.pf_id));
+        LOG_FILE(module, "Processing frontend command: type=" +
+                             std::to_string((int)cmd.cmd_type) + " pf_id=" + std::to_string(cmd.pf_id));
 
         // Prepare response
         FrontendResponse resp;
@@ -1811,191 +1781,199 @@ void HFTStrategyEngine::handle_frontend_event()
         resp.response_len = 0;
 
         uint32_t pf_id = cmd.pf_id;
-        PortfolioSlot& slot = portfolio_slots[pf_id];
+        PortfolioSlot &slot = portfolio_slots[pf_id];
 
         switch (cmd.cmd_type)
         {
         case FRONTEND_CMD_ADD:
         {
             // Extract type_id from payload (first 4 bytes)
-            if (cmd.payload_len < sizeof(uint32_t)) {
+            if (cmd.payload_len < sizeof(uint32_t))
+            {
                 resp.status = -1;
-                const char* err = "Invalid payload";
+                const char *err = "Invalid payload";
                 memcpy(resp.response, err, strlen(err));
                 resp.response_len = strlen(err);
                 break;
             }
-            
+
             uint32_t type_id;
             memcpy(&type_id, cmd.payload, sizeof(uint32_t));
-            
-            StrategyPlugin* plugin = find_plugin_by_type(type_id);
-            if (!plugin) {
+
+            StrategyPlugin *plugin = find_plugin_by_type(type_id);
+            if (!plugin)
+            {
                 resp.status = -1;
-                const char* err = "Type ID not found";
+                const char *err = "Type ID not found";
                 memcpy(resp.response, err, strlen(err));
                 resp.response_len = strlen(err);
-                
+
                 LOG_FILE(module, "Type ID not found: " + std::to_string(type_id));
                 break;
             }
-            
+
             // Create strategy instance
             StrategyFnTable fn_table;
-            void* handle = plugin->create(&fn_table);
-            if (!handle) {
+            void *handle = plugin->create(&fn_table);
+            if (!handle)
+            {
                 resp.status = -1;
-                const char* err = "Strategy creation failed";
+                const char *err = "Strategy creation failed";
                 memcpy(resp.response, err, strlen(err));
                 resp.response_len = strlen(err);
-                
+
                 LOG_FILE(module, "Strategy creation failed");
                 break;
             }
-            
+
             // Store in slot
             slot.plugin = plugin;
             slot.strategy_handle = handle;
             slot.fn_table = fn_table;
             slot.allocated = true;
-            
+
             // Call on_add (params start after type_id)
-            const uint8_t* params = cmd.payload + sizeof(uint32_t);
+            const uint8_t *params = cmd.payload + sizeof(uint32_t);
             uint32_t params_len = cmd.payload_len - sizeof(uint32_t);
-            
+
             resp.status = fn_table.on_add(
                 handle,
-                (PlatformContext*)this,
+                (PlatformContext *)this,
                 &s_platform_api,
                 pf_id,
                 params,
                 params_len,
                 resp.response,
                 &resp.response_len);
-            
+
             LOG_FILE(module, "Strategy added: pf_id=" + std::to_string(pf_id) +
-                     " type_id=" + std::to_string(type_id));
-            
+                                 " type_id=" + std::to_string(type_id));
+
             break;
         }
 
         case FRONTEND_CMD_EDIT:
         {
-            if (!slot.allocated) {
+            if (!slot.allocated)
+            {
                 resp.status = -1;
-                const char* err = "Portfolio not found";
+                const char *err = "Portfolio not found";
                 memcpy(resp.response, err, strlen(err));
                 resp.response_len = strlen(err);
                 break;
             }
-            
+
             resp.status = slot.fn_table.on_edit(
                 slot.strategy_handle,
-                (PlatformContext*)this,
+                (PlatformContext *)this,
                 pf_id,
                 cmd.payload,
                 cmd.payload_len,
                 resp.response,
                 &resp.response_len);
-            
+
             LOG_FILE(module, "Strategy edited: pf_id=" + std::to_string(pf_id));
-            
+
             break;
         }
 
         case FRONTEND_CMD_RUN:
         {
-            if (!slot.allocated) {
+            if (!slot.allocated)
+            {
                 resp.status = -1;
-                const char* err = "Portfolio not found";
+                const char *err = "Portfolio not found";
                 memcpy(resp.response, err, strlen(err));
                 resp.response_len = strlen(err);
                 break;
             }
-            
+
             resp.status = slot.fn_table.on_run(
                 slot.strategy_handle,
-                (PlatformContext*)this,
+                (PlatformContext *)this,
                 pf_id,
                 resp.response,
                 &resp.response_len);
-            
+
             LOG_FILE(module, "Strategy running: pf_id=" + std::to_string(pf_id));
-            
+
             break;
         }
 
         case FRONTEND_CMD_STOP:
         {
-            if (!slot.allocated) {
+            if (!slot.allocated)
+            {
                 resp.status = -1;
-                const char* err = "Portfolio not found";
+                const char *err = "Portfolio not found";
                 memcpy(resp.response, err, strlen(err));
                 resp.response_len = strlen(err);
                 break;
             }
-            
+
             resp.status = slot.fn_table.on_stop(
                 slot.strategy_handle,
-                (PlatformContext*)this,
+                (PlatformContext *)this,
                 pf_id,
                 resp.response,
                 &resp.response_len);
-            
+
             LOG_FILE(module, "Strategy stopped: pf_id=" + std::to_string(pf_id));
-            
+
             break;
         }
 
         case FRONTEND_CMD_REMOVE:
         {
-            if (!slot.allocated) {
+            if (!slot.allocated)
+            {
                 resp.status = -1;
-                const char* err = "Portfolio not found";
+                const char *err = "Portfolio not found";
                 memcpy(resp.response, err, strlen(err));
                 resp.response_len = strlen(err);
                 break;
             }
-            
+
             resp.status = slot.fn_table.on_remove(
                 slot.strategy_handle,
-                (PlatformContext*)this,
+                (PlatformContext *)this,
                 pf_id,
                 resp.response,
                 &resp.response_len);
-            
+
             slot.allocated = false;
             slot.strategy_handle = nullptr;
             slot.plugin = nullptr;
-            
+
             LOG_FILE(module, "Strategy removed: pf_id=" + std::to_string(pf_id));
-            
+
             break;
         }
 
         case FRONTEND_CMD_QUERY:
         {
-            if (!slot.allocated) {
+            if (!slot.allocated)
+            {
                 resp.status = -1;
-                const char* err = "Portfolio not found";
+                const char *err = "Portfolio not found";
                 memcpy(resp.response, err, strlen(err));
                 resp.response_len = strlen(err);
                 break;
             }
-            
+
             resp.status = slot.fn_table.on_query(
                 slot.strategy_handle,
-                (PlatformContext*)this,
+                (PlatformContext *)this,
                 pf_id,
                 resp.response,
                 &resp.response_len);
-            
+
             break;
         }
 
         default:
             resp.status = -1;
-            const char* err = "Unknown command";
+            const char *err = "Unknown command";
             memcpy(resp.response, err, strlen(err));
             resp.response_len = strlen(err);
             break;
@@ -2012,7 +1990,7 @@ void HFTStrategyEngine::handle_frontend_event()
     if (frontend_rx_buffer.utilization() > 80.0f) [[unlikely]]
     {
         LOG_FILE(module, "WARNING: Frontend buffer utilization at " +
-                         std::to_string(frontend_rx_buffer.utilization()) + "%");
+                             std::to_string(frontend_rx_buffer.utilization()) + "%");
     }
 }
 // // To handle Frontend Events
@@ -2183,8 +2161,6 @@ void HFTStrategyEngine::handle_frontend_event()
 //                 stream_to_sequence[s.legs[i].stream].portfolio_ids.insert(pf_id);
 //                 LOG_FILE(module, "Token coming from frontend: " + std::to_string(msg.add.legs[i].symbol_token) + " For pf id:" + std::to_string(pf_id) + " With stream:" + std::to_string(static_cast<int>(s.legs[i].stream)));
 //             }
-
-            
 
 //             s.updated_tick = false;
 //             s.is_active = true;
@@ -3088,44 +3064,55 @@ std::string HFTStrategyEngine::get_nse_fo_contract_name()
     return oss.str();
 }
 
-
-
 /* ════════════════════════════════════════════════════════════
  * PLATFORM API IMPLEMENTATIONS
  * ════════════════════════════════════════════════════════════ */
 
-
-int32_t HFTStrategyEngine::api_place_new_order_multi_leg(PlatformContext* ctx, uint32_t pf_id,
-                                       Leg* legs, uint8_t leg_count, OrderType order_type)
-{   
+int32_t HFTStrategyEngine::api_place_new_order_multi_leg(PlatformContext *ctx, uint32_t pf_id,
+                                                         Leg *legs, uint8_t leg_count, OrderType order_type)
+{
 
     // want to use this function sendOrderPlacement of order manager
-    HFTStrategyEngine* engine = (HFTStrategyEngine*)ctx;
+    HFTStrategyEngine *engine = (HFTStrategyEngine *)ctx;
     // Validate portfolio slot
-    if (pf_id >= MAX_PORTFOLIOS || !engine->portfolio_slots[pf_id].allocated) {
-        return -1; 
+    if (pf_id >= MAX_PORTFOLIOS || !engine->portfolio_slots[pf_id].allocated)
+    {
+        return -1;
     }
-    // we support 3/2/1 leg ioc, single leg bidding only 
-    if (leg_count == 0 || leg_count > 3) {
+    // we support 3/2/1 leg ioc, single leg bidding only
+    if (leg_count == 0 || leg_count > 3)
+    {
         return -4; // Invalid leg count
     }
     // Generate OMS ID for the multi-leg order (can be used as a group ID)
 
-    for(int i = 0; i < leg_count; i++) {
-        if (legs[i].qty <= 0 || legs[i].price <= 0) {
+    for (int i = 0; i < leg_count; i++)
+    {
+        if (legs[i].qty <= 0 || legs[i].price <= 0)
+        {
+            std::cout << "[ORDER_VALIDATION] FAILED leg=" << i
+              << " qty=" << legs[i].qty
+              << " price=" << legs[i].price
+            //   << " token=" << legs[i].token
+              << "\n";
             return -5; // Invalid leg parameters
         }
+        std::cout<<"i:"<<i<<std::endl;
         legs[i].oms_order_id = StrategyOrderIDManager::instance().generate();
     }
 
+        std::cout<<"Sending Order  Placement"<<std::endl;
+
     bool sent = engine->order_manager->sendOrderPlacement(pf_id, order_type, legs, leg_count, __rdtsc(), true);
-    if (!sent) {
+    if (!sent)
+    {
         LOG_FILE("PLATFORM_API", "Failed to send multi-leg order: pf=" + std::to_string(pf_id));
         return -2;
     }
 
-    for(int i = 0; i < leg_count; i++) {
-        const auto& leg = legs[i];
+    for (int i = 0; i < leg_count; i++)
+    {
+        const auto &leg = legs[i];
         engine->oms_to_leg[leg.oms_order_id] = StrategyLegData{
             .token = leg.symbol_id,
             .side = (OrderSide)leg.side,
@@ -3137,41 +3124,42 @@ int32_t HFTStrategyEngine::api_place_new_order_multi_leg(PlatformContext* ctx, u
             .oms_order_id = leg.oms_order_id,
             .exchange_order_id = 0,
             .exchange_modified_time = 0,
-            .order_state = OrderState::NewOms
-        };
+            .order_state = OrderState::NewOms};
 
-        LOG_FILE("PLATFORM_API", "Multi-leg order placed: pf=" + std::to_string(pf_id) + 
-                 " oms=" + std::to_string(leg.oms_order_id) + " token=" + std::to_string(leg.symbol_id) +
-                 " side=" + std::to_string((int)leg.side) + " price=" + std::to_string(leg.price) +
-                 " qty=" + std::to_string(leg.qty));
+        LOG_FILE("PLATFORM_API", "Multi-leg order placed: pf=" + std::to_string(pf_id) +
+                                     " oms=" + std::to_string(leg.oms_order_id) + " token=" + std::to_string(leg.symbol_id) +
+                                     " side=" + std::to_string((int)leg.side) + " price=" + std::to_string(leg.price) +
+                                     " qty=" + std::to_string(leg.qty));
     }
 
     return 0;
 }
 
-
 int32_t HFTStrategyEngine::api_place_modify_order(
-    PlatformContext* ctx, uint32_t pf_id,
+    PlatformContext *ctx, uint32_t pf_id,
     uint32_t oms_order_id,
     int64_t new_price, int32_t new_qty)
 {
-    HFTStrategyEngine* engine = (HFTStrategyEngine*)ctx;
-    
-    if (pf_id >= MAX_PORTFOLIOS || !engine->portfolio_slots[pf_id].allocated) {
+    HFTStrategyEngine *engine = (HFTStrategyEngine *)ctx;
+
+    if (pf_id >= MAX_PORTFOLIOS || !engine->portfolio_slots[pf_id].allocated)
+    {
         return -1;
     }
-    
+
     // Find order
     auto it = engine->oms_to_leg.find(oms_order_id);
-    if (it == engine->oms_to_leg.end()) {
-        return -3;  // Not found
+    if (it == engine->oms_to_leg.end())
+    {
+        return -3; // Not found
     }
-    
+
     // Check if no-op (dedup)
-    if (it->second.ordered_price == new_price && it->second.required_qty == new_qty) {
-        return -2;  // No-op
+    if (it->second.ordered_price == new_price && it->second.required_qty == new_qty)
+    {
+        return -2; // No-op
     }
-    
+
     // Create modify leg
     Leg leg;
     leg.symbol_id = it->second.token;
@@ -3179,239 +3167,258 @@ int32_t HFTStrategyEngine::api_place_modify_order(
     leg.price = new_price;
     leg.qty = new_qty;
     leg.oms_order_id = oms_order_id;
-    
+
     bool sent = engine->order_manager->sendModifyPlacement(
         pf_id, oms_order_id, leg, __rdtsc(), 0);
-    
-    if (!sent) {
+
+    if (!sent)
+    {
         LOG_FILE("PLATFORM_API", "Failed to modify order: oms=" + std::to_string(oms_order_id));
         return -2;
     }
-    
+
     LOG_FILE("PLATFORM_API", "Order modified: oms=" + std::to_string(oms_order_id) +
-             " price=" + std::to_string(new_price) + " qty=" + std::to_string(new_qty));
-    
+                                 " price=" + std::to_string(new_price) + " qty=" + std::to_string(new_qty));
+
     return 0;
 }
 
 int32_t HFTStrategyEngine::api_place_cancel_order(
-    PlatformContext* ctx, uint32_t pf_id, uint32_t oms_order_id)
+    PlatformContext *ctx, uint32_t pf_id, uint32_t oms_order_id)
 {
-    HFTStrategyEngine* engine = (HFTStrategyEngine*)ctx;
-    
-    if (pf_id >= MAX_PORTFOLIOS || !engine->portfolio_slots[pf_id].allocated) {
+    HFTStrategyEngine *engine = (HFTStrategyEngine *)ctx;
+
+    if (pf_id >= MAX_PORTFOLIOS || !engine->portfolio_slots[pf_id].allocated)
+    {
         return -1;
     }
-    
+
     bool sent = engine->order_manager->sendCancelPlacement(pf_id, oms_order_id);
-    
-    if (!sent) {
+
+    if (!sent)
+    {
         LOG_FILE("PLATFORM_API", "Failed to cancel order: oms=" + std::to_string(oms_order_id));
         return -2;
     }
-    
+
     LOG_FILE("PLATFORM_API", "Order cancelled: oms=" + std::to_string(oms_order_id));
-    
+
     return 0;
 }
 
 int32_t HFTStrategyEngine::api_get_position(
-    PlatformContext* ctx, uint32_t pf_id,
-    uint32_t token, PositionView* out)
+    PlatformContext *ctx, uint32_t pf_id,
+    uint32_t token, PositionView *out)
 {
-    HFTStrategyEngine* engine = (HFTStrategyEngine*)ctx;
-    
+    HFTStrategyEngine *engine = (HFTStrategyEngine *)ctx;
+
     // You need to track positions - for now return not found
     // TODO: Implement position tracking similar to your existing logic
     return -1;
 }
 
 int32_t HFTStrategyEngine::api_get_open_orders(
-    PlatformContext* ctx, uint32_t pf_id,
-    OpenOrderView* out_buf, int32_t max)
+    PlatformContext *ctx, uint32_t pf_id,
+    OpenOrderView *out_buf, int32_t max)
 {
-    HFTStrategyEngine* engine = (HFTStrategyEngine*)ctx;
-    
+    HFTStrategyEngine *engine = (HFTStrategyEngine *)ctx;
+
     auto it = engine->open_orders.find(pf_id);
-    if (it == engine->open_orders.end()) {
+    if (it == engine->open_orders.end())
+    {
         return 0;
     }
-    
+
     int32_t count = 0;
-    for (uint32_t oms_id : it->second) {
-        if (count >= max) break;
-        
+    for (uint32_t oms_id : it->second)
+    {
+        if (count >= max)
+            break;
+
         auto leg_it = engine->oms_to_leg.find(oms_id);
-        if (leg_it == engine->oms_to_leg.end()) continue;
-        
+        if (leg_it == engine->oms_to_leg.end())
+            continue;
+
         out_buf[count].oms_order_id = oms_id;
         out_buf[count].token = leg_it->second.token;
         out_buf[count].side = (uint8_t)leg_it->second.side;
         out_buf[count].price = leg_it->second.ordered_price;
         out_buf[count].qty = leg_it->second.required_qty;
         out_buf[count].state = leg_it->second.order_state;
-        
+
         count++;
     }
-    
+
     return count;
 }
 
 void HFTStrategyEngine::api_log_msg(
-    PlatformContext* ctx, uint32_t pf_id,
-    const char* msg, uint32_t len)
+    PlatformContext *ctx, uint32_t pf_id,
+    const char *msg, uint32_t len)
 {
-    HFTStrategyEngine* engine = (HFTStrategyEngine*)ctx;
-    
+    HFTStrategyEngine *engine = (HFTStrategyEngine *)ctx;
+
     std::string log_str(msg, len);
     LOG_FILE("STRATEGY_" + std::to_string(pf_id), log_str);
 }
 
 void HFTStrategyEngine::api_send_status_update(
-    PlatformContext* ctx,
+    PlatformContext *ctx,
     uint32_t pf_id,
-    const StrategyStatusUpdate* update)
+    const StrategyStatusUpdate *update)
 {
-    HFTStrategyEngine* engine = (HFTStrategyEngine*)ctx;
-    
+    HFTStrategyEngine *engine = (HFTStrategyEngine *)ctx;
+
     // Build frontend message
     FrontendResponse resp;
     resp.pf_id = pf_id;
     resp.status = 0;
-    
+
     // Format as JSON
     char json[4096];
     int len = snprintf(json, sizeof(json),
-        "{\"type\":\"status_update\","
-        "\"pf_id\":%u,"
-        "\"traded_qty\":%d,"
-        "\"achieved_spread\":%d,"
-        "\"current_spread\":%d,"           // NEW
-        "\"has_opportunity\":%d,"          // NEW
-        "\"is_complete\":%d",
-        update->pf_id,
-        update->traded_qty,
-        update->achieved_spread,
-        update->current_spread,            // NEW
-        update->has_opportunity,           // NEW
-        update->is_complete);
-    
+                       "{\"type\":\"status_update\","
+                       "\"pf_id\":%u,"
+                       "\"traded_qty\":%d,"
+                       "\"achieved_spread\":%d,"
+                       "\"current_spread\":%d,"  // NEW
+                       "\"has_opportunity\":%d," // NEW
+                       "\"is_complete\":%d",
+                       update->pf_id,
+                       update->traded_qty,
+                       update->achieved_spread,
+                       update->current_spread,  // NEW
+                       update->has_opportunity, // NEW
+                       update->is_complete);
+
     // Add custom data if present
-    if (update->custom_data_len > 0) {
+    if (update->custom_data_len > 0)
+    {
         len += snprintf(json + len, sizeof(json) - len, ",\"custom\":\"");
-        
-        for (uint32_t i = 0; i < update->custom_data_len && i < 100; i++) {
+
+        for (uint32_t i = 0; i < update->custom_data_len && i < 100; i++)
+        {
             len += snprintf(json + len, sizeof(json) - len,
-                "%02x", update->custom_data[i]);
+                            "%02x", update->custom_data[i]);
         }
-        
+
         len += snprintf(json + len, sizeof(json) - len, "\"");
     }
-    
+
     snprintf(json + len, sizeof(json) - len, "}");
-    
+
     memcpy(resp.response, json, strlen(json));
     resp.response_len = strlen(json);
-    
+
     // Send to frontend
     if (engine->socketManager.getFrontendClientSocket() != -1)
     {
         send(engine->socketManager.getFrontendClientSocket(), &resp,
              sizeof(FrontendResponse), MSG_DONTWAIT);
     }
-    
+
     LOG_FILE("PLATFORM_API", "Status: pf=" + std::to_string(pf_id) +
-             " current_spread=" + std::to_string(update->current_spread) +
-             " achieved_spread=" + std::to_string(update->achieved_spread) +
-             " opportunity=" + std::to_string(update->has_opportunity));
+                                 " current_spread=" + std::to_string(update->current_spread) +
+                                 " achieved_spread=" + std::to_string(update->achieved_spread) +
+                                 " opportunity=" + std::to_string(update->has_opportunity));
 }
 
 /* ════════════════════════════════════════════════════════════
  * PLUGIN MANAGEMENT
  * ════════════════════════════════════════════════════════════ */
 
-bool HFTStrategyEngine::load_strategy_plugin(const char* so_path)
+bool HFTStrategyEngine::load_strategy_plugin(const char *so_path)
 {
-    if (plugin_count >= 32) {
+    if (plugin_count >= 32)
+    {
         LOG_FILE(module, "Maximum plugins loaded");
         LOG_LIVE(module, "Maximum plugins loaded");
         return false;
     }
-    
-    void* handle = dlopen(so_path, RTLD_NOW | RTLD_LOCAL);
-    if (!handle) {
+
+    void *handle = dlopen(so_path, RTLD_NOW | RTLD_LOCAL);
+    if (!handle)
+    {
         LOG_FILE(module, "dlopen failed: " + std::string(dlerror()));
         LOG_LIVE(module, "dlopen failed: " + std::string(dlerror()));
         return false;
     }
-    
+
     // Resolve symbols
-    auto get_type_id = (uint32_t(*)(void))dlsym(handle, "strategy_get_type_id");
-    auto create = (void*(*)(StrategyFnTable*))dlsym(handle, "strategy_create");
-    auto destroy_all = (void(*)(void))dlsym(handle, "strategy_destroy_all");
-    
-    if (!get_type_id || !create || !destroy_all) {
+    auto get_type_id = (uint32_t (*)(void))dlsym(handle, "strategy_get_type_id");
+    auto create = (void *(*)(StrategyFnTable *))dlsym(handle, "strategy_create");
+    auto destroy_all = (void (*)(void))dlsym(handle, "strategy_destroy_all");
+
+    if (!get_type_id || !create || !destroy_all)
+    {
         LOG_FILE(module, "Failed to resolve symbols: " + std::string(dlerror()));
         LOG_LIVE(module, "Failed to resolve symbols: " + std::string(dlerror()));
         dlclose(handle);
         return false;
     }
-    
+
     uint32_t type_id = get_type_id();
-    
+
     // Check for duplicate
-    for (uint8_t i = 0; i < plugin_count; i++) {
-        if (plugins[i].type_id == type_id) {
+    for (uint8_t i = 0; i < plugin_count; i++)
+    {
+        if (plugins[i].type_id == type_id)
+        {
             LOG_FILE(module, "Plugin with type_id " + std::to_string(type_id) + " already loaded");
             LOG_LIVE(module, "Plugin with type_id " + std::to_string(type_id) + " already loaded");
             dlclose(handle);
             return false;
         }
     }
-    
+
     // Store plugin
-    StrategyPlugin& plugin = plugins[plugin_count++];
+    StrategyPlugin &plugin = plugins[plugin_count++];
     plugin.dl_handle = handle;
     plugin.type_id = type_id;
     plugin.get_type_id = get_type_id;
     plugin.create = create;
     plugin.destroy_all = destroy_all;
     strncpy(plugin.so_path, so_path, sizeof(plugin.so_path) - 1);
-    
-    LOG_FILE(module, "Loaded plugin: " + std::string(so_path) + 
-             " type_id=" + std::to_string(type_id));
-    LOG_LIVE(module, "Loaded plugin: " + std::string(so_path) + 
-             " type_id=" + std::to_string(type_id));
-    
+
+    LOG_FILE(module, "Loaded plugin: " + std::string(so_path) +
+                         " type_id=" + std::to_string(type_id));
+    LOG_LIVE(module, "Loaded plugin: " + std::string(so_path) +
+                         " type_id=" + std::to_string(type_id));
+
     return true;
 }
 
 void HFTStrategyEngine::unload_strategy_plugin(uint32_t type_id)
 {
-    for (uint8_t i = 0; i < plugin_count; i++) {
-        if (plugins[i].type_id == type_id) {
+    for (uint8_t i = 0; i < plugin_count; i++)
+    {
+        if (plugins[i].type_id == type_id)
+        {
             // Destroy all instances
             plugins[i].destroy_all();
-            
+
             // Unload .so
             dlclose(plugins[i].dl_handle);
-            
+
             // Remove from array
-            for (uint8_t j = i; j < plugin_count - 1; j++) {
+            for (uint8_t j = i; j < plugin_count - 1; j++)
+            {
                 plugins[j] = plugins[j + 1];
             }
             plugin_count--;
-            
+
             LOG_FILE(module, "Unloaded plugin: type_id=" + std::to_string(type_id));
             return;
         }
     }
 }
 
-HFTStrategyEngine::StrategyPlugin* HFTStrategyEngine::find_plugin_by_type(uint32_t type_id)
+HFTStrategyEngine::StrategyPlugin *HFTStrategyEngine::find_plugin_by_type(uint32_t type_id)
 {
-    for (uint8_t i = 0; i < plugin_count; i++) {
-        if (plugins[i].type_id == type_id) {
+    for (uint8_t i = 0; i < plugin_count; i++)
+    {
+        if (plugins[i].type_id == type_id)
+        {
             return &plugins[i];
         }
     }

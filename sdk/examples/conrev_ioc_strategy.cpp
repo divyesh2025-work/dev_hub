@@ -31,24 +31,27 @@ struct ConRevIOCState {
     
     ConRevIOCParams    params;
     
-    // Runtime state
     bool     active;
     int32_t  traded_qty;
     int32_t  achieved_spread;
-    
-    uint32_t fut_oms_id;
-    uint32_t call_oms_id;
-    uint32_t put_oms_id;
-    
     bool     legs_sent;
     
-    // Cached market data (since we're subscribed to 3 tokens)
     MarketEvent fut_market;
     MarketEvent call_market;
     MarketEvent put_market;
     bool        fut_valid;
     bool        call_valid;
     bool        put_valid;
+
+    uint32_t fut_oms_id;
+    uint32_t call_oms_id;
+    uint32_t put_oms_id;
+
+    // ── Parent tracking ───────────────────────────────────────
+    uint32_t last_parent_oms_id;
+    uint32_t all_parent_oms_ids[64];
+    int      parent_oms_count;
+    // ─────────────────────────────────────────────────────────
 };
 
 // Pre-allocated pool
@@ -58,29 +61,60 @@ static uint32_t       g_alloc = 0;
 /* ═══════════════════════════════════════════════════════════
  * HELPER: Compute spread
  * ═══════════════════════════════════════════════════════════ */
+static inline uint64_t rdtsc()
+{
+    unsigned int lo, hi;
+    __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
+    return ((uint64_t)hi << 32) | lo;
+}
 
 static bool compute_opportunity(ConRevIOCState* s, int32_t* spread_out)
 {
-    if (!s->fut_valid || !s->call_valid || !s->put_valid) return false;
-    
-    int64_t fut_bid = s->fut_market.bids[0];
-    int64_t fut_ask = s->fut_market.asks[0];
-    int64_t call_bid = s->call_market.bids[0];
-    int64_t call_ask = s->call_market.asks[0];
-    int64_t put_bid = s->put_market.bids[0];
-    int64_t put_ask = s->put_market.asks[0];
-    
-    int32_t spread;
-    if (s->params.is_conversion) {
-        spread = s->params.strike_price - fut_ask + call_bid - put_ask;
-    } else {
-        spread = -s->params.strike_price + fut_bid - call_ask + put_bid;
+    if (!s->fut_valid || !s->call_valid || !s->put_valid) {
+        std::cout << "[compute_opportunity] INVALID: fut_valid=" << s->fut_valid
+                  << " call_valid=" << s->call_valid
+                  << " put_valid=" << s->put_valid << "\n";
+        return false;
     }
     
-    *spread_out = spread;
-    return spread >= s->params.spread_threshold;
-}
+    int64_t fut_bid  = s->fut_market.bids[0];
+    int64_t fut_ask  = s->fut_market.asks[0];
+    int64_t call_bid = s->call_market.bids[0];
+    int64_t call_ask = s->call_market.asks[0];
+    int64_t put_bid  = s->put_market.bids[0];
+    int64_t put_ask  = s->put_market.asks[0];
 
+    std::cout << "[compute_opportunity] RAW PRICES:"
+              << " fut_bid="  << fut_bid  << " fut_ask="  << fut_ask
+              << " call_bid=" << call_bid << " call_ask=" << call_ask
+              << " put_bid="  << put_bid  << " put_ask="  << put_ask
+              << " strike="   << s->params.strike_price
+              << " is_conversion=" << s->params.is_conversion
+              << "\n";
+    
+    int64_t spread;  // use int64_t not int32_t - overflow suspect
+    if (s->params.is_conversion) {
+        spread = int64_t(s->params.strike_price) - fut_ask + call_bid - put_ask;
+        std::cout << "[compute_opportunity] CONVERSION spread="
+                  << s->params.strike_price << " - " << fut_ask
+                  << " + " << call_bid << " - " << put_ask
+                  << " = " << spread << "\n";
+    } else {
+        spread = -int64_t(s->params.strike_price) + fut_bid - call_ask + put_bid;
+        std::cout << "[compute_opportunity] REVERSAL spread= -"
+                  << s->params.strike_price << " + " << fut_bid
+                  << " - " << call_ask << " + " << put_bid
+                  << " = " << spread << "\n";
+    }
+
+    std::cout << "[compute_opportunity] spread=" << spread
+              << " threshold=" << s->params.spread_threshold
+              << " result=" << (spread >= int64_t(s->params.spread_threshold))
+              << "\n";
+    
+    *spread_out = (int32_t)spread;
+    return spread >= int64_t(s->params.spread_threshold);
+}
 /* ═══════════════════════════════════════════════════════════
  * FRONTEND CALLBACKS (lifecycle management)
  * ═══════════════════════════════════════════════════════════ */
@@ -114,6 +148,9 @@ static int32_t conrev_on_add(void* handle, PlatformContext* ctx,
     s->fut_valid = false;
     s->call_valid = false;
     s->put_valid = false;
+    s->last_parent_oms_id = 0;
+    s->parent_oms_count   = 0;
+    memset(s->all_parent_oms_ids, 0, sizeof(s->all_parent_oms_ids));
     
     // Log
     char log_buf[256];
@@ -306,6 +343,11 @@ static void conrev_on_market_event(void* handle, PlatformContext* ctx,
         s->put_market = *ev;
         s->put_valid = true;
     }
+
+    std::cout<<"g\n";
+    std::cout<< s->fut_market.bids[0]<<std::endl;
+    std::cout<< s->call_market.bids[0]<<std::endl;
+    std::cout<< s->put_market.bids[0]<<std::endl;
     
     // ═══════════════════════════════════════════════════════
     // NEW: ALWAYS COMPUTE AND SEND CURRENT SPREAD
@@ -342,28 +384,75 @@ static void conrev_on_market_event(void* handle, PlatformContext* ctx,
     s->api->log_msg(ctx, pf_id, log_buf, strlen(log_buf));
     
     // Place all 3 legs
-    int32_t qty = s->params.max_lots - s->traded_qty;
+    uint32_t qty = s->params.max_lots - s->traded_qty;
+
+    alignas(64) Leg legs[3];
+
     
-    if (s->params.is_conversion) {
-        // Long Fut + Short Call + Long Put
-        s->fut_oms_id  = s->api->place_new_order(ctx, pf_id, s->params.fut_token,  
-                                                  0, s->fut_market.asks[0], qty);
-        s->call_oms_id = s->api->place_new_order(ctx, pf_id, s->params.call_token, 
-                                                  1, s->call_market.bids[0], qty);
-        s->put_oms_id  = s->api->place_new_order(ctx, pf_id, s->params.put_token,  
-                                                  0, s->put_market.asks[0], qty);
-    } else {
-        // Short Fut + Long Call + Short Put
-        s->fut_oms_id  = s->api->place_new_order(ctx, pf_id, s->params.fut_token,  
-                                                  1, s->fut_market.bids[0], qty);
-        s->call_oms_id = s->api->place_new_order(ctx, pf_id, s->params.call_token, 
-                                                  0, s->call_market.asks[0], qty);
-        s->put_oms_id  = s->api->place_new_order(ctx, pf_id, s->params.put_token,  
-                                                  1, s->put_market.bids[0], qty);
+    if (s->params.is_conversion)
+    {
+        legs[0] = { s->params.fut_token,
+                    s->fut_market.asks[0],
+                    qty,
+                    OrderSide::Buy,
+                    rdtsc(),
+                    0 };
+
+        legs[1] = { s->params.call_token,
+                    s->call_market.bids[0],
+                    qty,
+                    OrderSide::Sell,
+                    rdtsc(),
+                    0 };
+
+        legs[2] = { s->params.put_token,
+                    s->put_market.asks[0],
+                    qty,
+                    OrderSide::Buy,
+                    rdtsc(),
+                    0 };
     }
-    
-    s->legs_sent = true;
-    s->achieved_spread = current_spread;  // Store the spread at which we placed
+    else
+    {
+        legs[0] = { s->params.fut_token,
+                    s->fut_market.bids[0],
+                    qty,
+                    OrderSide::Sell,
+                    rdtsc(),
+                    0 };
+
+        legs[1] = { s->params.call_token,
+                    s->call_market.asks[0],
+                    qty,
+                    OrderSide::Buy,
+                    rdtsc(),
+                    0 };
+
+        legs[2] = { s->params.put_token,
+                    s->put_market.bids[0],
+                    qty,
+                    OrderSide::Sell,
+                    rdtsc(),
+                    0 };
+    }
+
+    int32_t ret = s->api->place_new_order_multi_leg(
+        ctx, pf_id, legs, 3, OrderType::IOC
+    );
+    if(ret<=0) return;
+
+    uint32_t new_parent      = (uint32_t)ret;
+    s->last_parent_oms_id    = new_parent;
+
+    if (s->parent_oms_count < 64) {
+        s->all_parent_oms_ids[s->parent_oms_count++] = new_parent;
+    }
+
+    s->legs_sent       = true;
+    s->achieved_spread = current_spread;
+    s->fut_oms_id      = legs[0].oms_order_id;
+    s->call_oms_id     = legs[1].oms_order_id;
+    s->put_oms_id      = legs[2].oms_order_id;
     
     snprintf(log_buf, sizeof(log_buf),
              "ORDERS_PLACED: fut=%lu call=%lu put=%lu qty=%d spread=%d",
@@ -371,22 +460,102 @@ static void conrev_on_market_event(void* handle, PlatformContext* ctx,
     s->api->log_msg(ctx, pf_id, log_buf, strlen(log_buf));
 }
 
+static inline bool is_known_parent(ConRevIOCState* s, uint32_t parent_oms_id)
+{
+    for (int i = 0; i < s->parent_oms_count; i++) {
+        if (s->all_parent_oms_ids[i] == parent_oms_id) return true;
+    }
+    return false;
+}
+
 static void conrev_on_order_update(void* handle, PlatformContext* ctx,
                                    uint32_t pf_id, const OrderUpdate* upd)
 {
     ConRevIOCState* s = (ConRevIOCState*)handle;
-    
-    if (upd->state == Fill || upd->state == PartialFill) {
-        s->traded_qty += upd->filled_qty;
-        
-        // Check if complete
-        if (s->traded_qty >= s->params.max_lots) {
-            char log_buf[64];
+
+    // ── Filter: only handle updates belonging to our orders ──
+    if (!is_known_parent(s, upd->oms_order_id)) return;
+    // ─────────────────────────────────────────────────────────
+
+    uint32_t oms = upd->oms_order_id;
+
+    // Identify leg
+    const char* leg_name = "unknown";
+    bool is_fut  = (oms == s->fut_oms_id);
+    bool is_call = (oms == s->call_oms_id);
+    bool is_put  = (oms == s->put_oms_id);
+    if (is_fut)  leg_name = "fut";
+    if (is_call) leg_name = "call";
+    if (is_put)  leg_name = "put";
+
+    switch (upd->state)
+    {
+        case Fill:
+        {
+            // Mirror working code: only leg 0 (fut) drives traded_qty
+            if (is_fut) {
+                s->traded_qty += upd->filled_qty;
+            }
+
+            // Clear resolved leg ids
+            if (is_fut)  s->fut_oms_id  = 0;
+            if (is_call) s->call_oms_id = 0;
+            if (is_put)  s->put_oms_id  = 0;
+
+            char log_buf[128];
             snprintf(log_buf, sizeof(log_buf),
-                     "COMPLETE: traded=%d spread=%d",
-                     s->traded_qty, s->achieved_spread);
+                     "FILL: leg=%s oms=%u qty=%d total_traded=%d",
+                     leg_name, oms, upd->filled_qty, s->traded_qty);
             s->api->log_msg(ctx, pf_id, log_buf, strlen(log_buf));
+
+            if (s->traded_qty >= s->params.max_lots) {
+                s->api->log_msg(ctx, pf_id, "COMPLETE", 8);
+                s->active    = false;
+                s->legs_sent = false;
+            }
+            break;
         }
+
+        case PartialFill:
+        {
+            if (is_fut) {
+                s->traded_qty += upd->filled_qty;
+            }
+
+            char log_buf[128];
+            snprintf(log_buf, sizeof(log_buf),
+                     "PARTIAL: leg=%s oms=%u qty=%d total_traded=%d",
+                     leg_name, oms, upd->filled_qty, s->traded_qty);
+            s->api->log_msg(ctx, pf_id, log_buf, strlen(log_buf));
+            break;
+        }
+
+        case CancelExchange:
+        case ExchnageRejected:
+        {
+            uint32_t unfilled = (upd->ordered_qty > upd->filled_qty)
+                                ? upd->ordered_qty - upd->filled_qty : 0;
+
+            if (is_fut)  s->fut_oms_id  = 0;
+            if (is_call) s->call_oms_id = 0;
+            if (is_put)  s->put_oms_id  = 0;
+
+            char log_buf[128];
+            snprintf(log_buf, sizeof(log_buf),
+                     "%s: leg=%s oms=%u unfilled=%u",
+                     upd->state == CancelExchange ? "CANCEL" : "REJECT",
+                     leg_name, oms, unfilled);
+            s->api->log_msg(ctx, pf_id, log_buf, strlen(log_buf));
+
+            // All legs of this batch resolved → allow next opportunity
+            if (!s->fut_oms_id && !s->call_oms_id && !s->put_oms_id) {
+                s->legs_sent = false;
+            }
+            break;
+        }
+
+        default:
+            break;
     }
 }
 

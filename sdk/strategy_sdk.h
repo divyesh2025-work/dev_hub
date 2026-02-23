@@ -100,6 +100,30 @@ typedef struct {
     OrderState  state;
 } __attribute__((packed)) OpenOrderView;
 
+
+enum class OrderType : uint8_t
+{
+    Bidding = 0,
+    IOC = 1
+};
+
+enum class OrderSide : uint8_t
+{
+    Buy = 0,
+    Sell = 1
+};
+
+struct Leg
+{
+    uint32_t symbol_id;
+    uint32_t price;
+    uint32_t qty;
+    OrderSide side;
+    unsigned long long start_time;
+    uint32_t oms_order_id;
+};
+
+
 /* ═══════════════════════════════════════════════════════════
  * STRATEGY STATUS UPDATE (strategy → frontend)
  * ═══════════════════════════════════════════════════════════ */
@@ -122,13 +146,12 @@ typedef struct {
 typedef struct PlatformContext PlatformContext;
 
 typedef struct {
-    int64_t (*place_new_order)(
+    int32_t (*place_new_order_multi_leg)(
         PlatformContext* ctx,
         uint32_t pf_id,
-        uint32_t token,
-        uint8_t  side,
-        int64_t  price,
-        int32_t  qty
+        Leg* legs, 
+        uint8_t leg_count, 
+        OrderType order_type
     );
     
     int32_t (*place_modify_order)(

@@ -2,18 +2,9 @@
 #include <cstdint>
 #include "OrderEnums.h"
 #include "../core/BasicTypes.h"
-
+#include "../sdk/strategy_sdk.h"
 #pragma pack(push, 1)
 
-struct Leg
-{
-    uint32_t symbol_id;
-    uint32_t price;
-    uint32_t qty;
-    OrderSide side;
-    unsigned long long start_time;
-    uint32_t oms_order_id;
-};
 
 struct Trade
 {

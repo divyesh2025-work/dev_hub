@@ -266,13 +266,9 @@ private:
     void unload_strategy_plugin(uint32_t type_id);
     
     // Platform API implementations (static for C ABI)
-    static int32_t api_place_new_order_single_leg(PlatformContext* ctx, uint32_t pf_id,
-                                       uint32_t token, uint8_t side,
-                                       int64_t price, int32_t qty, uint8_t order_type);
                         
     static int32_t api_place_new_order_multi_leg(PlatformContext* ctx, uint32_t pf_id,
-                                       uint32_t token, uint8_t side,
-                                       const OrderLeg* legs, uint8_t leg_count, uint8_t order_type);
+                                       Leg* legs, uint8_t leg_count, OrderType order_type);
   
     static int32_t api_place_modify_order(PlatformContext* ctx, uint32_t pf_id,
                                           uint32_t oms_order_id,

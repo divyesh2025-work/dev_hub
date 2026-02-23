@@ -79,7 +79,7 @@ HFTStrategyEngine::~HFTStrategyEngine()
 
 void HFTStrategyEngine::setup_platform_api()
 {
-    s_platform_api.place_new_order_single_leg = api_place_new_order_single_leg;
+    // s_platform_api.place_new_order_single_leg = api_place_new_order_single_leg;
     s_platform_api.place_new_order_multi_leg = api_place_new_order_multi_leg;
     s_platform_api.place_modify_order = api_place_modify_order;
     s_platform_api.place_cancel_order = api_place_cancel_order;
@@ -1175,27 +1175,27 @@ if (slot.allocated && slot.fn_table.on_order_update)
                         // After handling Fill, PartialFill, NewOrderAck, etc.
 // ADD this to call strategy callback:
 
-PortfolioSlot& slot = portfolio_slots[portfolio_id];
-if (slot.allocated && slot.fn_table.on_order_update)
-{
-    OrderUpdate upd;
-    upd.oms_order_id = oms_order_id;
-    upd.exchange_order_id = leg.exchange_order_id;
-    upd.token = leg.token;
-    upd.side = (uint8_t)leg.side;
-    upd.state = leg.order_state;
-    upd.ordered_price = leg.ordered_price;
-    upd.ordered_qty = leg.required_qty;
-    upd.filled_qty = leg.fill_qty_sum;
-    upd.avg_fill_price = leg.fill_qty_sum > 0 ? 
-                         leg.fill_price_sum / leg.fill_qty_sum : 0;
-    
-    slot.fn_table.on_order_update(
-        slot.strategy_handle,
-        (PlatformContext*)this,
-        portfolio_id,
-        &upd);
-}
+                        PortfolioSlot& slot = portfolio_slots[portfolio_id];
+                        if (slot.allocated && slot.fn_table.on_order_update)
+                        {
+                            OrderUpdate upd;
+                            upd.oms_order_id = oms_order_id;
+                            upd.exchange_order_id = leg.exchange_order_id;
+                            upd.token = leg.token;
+                            upd.side = (uint8_t)leg.side;
+                            upd.state = leg.order_state;
+                            upd.ordered_price = leg.ordered_price;
+                            upd.ordered_qty = leg.required_qty;
+                            upd.filled_qty = leg.fill_qty_sum;
+                            upd.avg_fill_price = leg.fill_qty_sum > 0 ? 
+                                                leg.fill_price_sum / leg.fill_qty_sum : 0;
+                            
+                            slot.fn_table.on_order_update(
+                                slot.strategy_handle,
+                                (PlatformContext*)this,
+                                portfolio_id,
+                                &upd);
+                        }
 
                         break;
                     }
@@ -3095,9 +3095,8 @@ std::string HFTStrategyEngine::get_nse_fo_contract_name()
  * ════════════════════════════════════════════════════════════ */
 
 
-int32_t HFTStrategyEngine::api_new_order_multi_leg(PlatformContext* ctx, uint32_t pf_id,
-                                       uint32_t token, uint8_t side,
-                                       const OrderLeg* legs, uint8_t leg_count, uint8_t order_type)
+int32_t HFTStrategyEngine::api_place_new_order_multi_leg(PlatformContext* ctx, uint32_t pf_id,
+                                       Leg* legs, uint8_t leg_count, OrderType order_type)
 {   
 
     // want to use this function sendOrderPlacement of order manager
@@ -3119,7 +3118,7 @@ int32_t HFTStrategyEngine::api_new_order_multi_leg(PlatformContext* ctx, uint32_
         legs[i].oms_order_id = StrategyOrderIDManager::instance().generate();
     }
 
-    bool sent = engine->order_manager->sendOrderPlacement(pf_id, (OrderType)order_type, legs, leg_count, __rdtsc(), true);
+    bool sent = engine->order_manager->sendOrderPlacement(pf_id, order_type, legs, leg_count, __rdtsc(), true);
     if (!sent) {
         LOG_FILE("PLATFORM_API", "Failed to send multi-leg order: pf=" + std::to_string(pf_id));
         return -2;
@@ -3143,7 +3142,7 @@ int32_t HFTStrategyEngine::api_new_order_multi_leg(PlatformContext* ctx, uint32_
 
         LOG_FILE("PLATFORM_API", "Multi-leg order placed: pf=" + std::to_string(pf_id) + 
                  " oms=" + std::to_string(leg.oms_order_id) + " token=" + std::to_string(leg.symbol_id) +
-                 " side=" + std::to_string(leg.side) + " price=" + std::to_string(leg.price) +
+                 " side=" + std::to_string((int)leg.side) + " price=" + std::to_string(leg.price) +
                  " qty=" + std::to_string(leg.qty));
     }
 

@@ -1578,6 +1578,7 @@ void HFTStrategyEngine::run()
                             ev.stream_id = data.stream_id;
                             ev.last_traded_price = data.last_traded_price;
                             ev.start_time = data.timestamp;
+                            ev.event_time = st;
 
                             // HOT PATH: Direct function pointer call to .so
                             slot.fn_table.on_market_event(
@@ -3069,7 +3070,7 @@ std::string HFTStrategyEngine::get_nse_fo_contract_name()
  * ════════════════════════════════════════════════════════════ */
 
 int32_t HFTStrategyEngine::api_place_new_order_multi_leg(PlatformContext *ctx, uint32_t pf_id,
-                                                         Leg *legs, uint8_t leg_count, OrderType order_type)
+                                                         Leg *legs, uint8_t leg_count, OrderType order_type, unsigned long long event_time)
 {
 
     // want to use this function sendOrderPlacement of order manager
@@ -3097,13 +3098,13 @@ int32_t HFTStrategyEngine::api_place_new_order_multi_leg(PlatformContext *ctx, u
               << "\n";
             return -5; // Invalid leg parameters
         }
-        std::cout<<"i:"<<i<<std::endl;
+        // std::cout<<"i:"<<i<<std::endl;
         legs[i].oms_order_id = StrategyOrderIDManager::instance().generate();
     }
 
-        std::cout<<"Sending Order  Placement"<<std::endl;
+        // std::cout<<"Sending Order  Placement"<<std::endl;
 
-    bool sent = engine->order_manager->sendOrderPlacement(pf_id, order_type, legs, leg_count, __rdtsc(), true);
+    bool sent = engine->order_manager->sendOrderPlacement(pf_id, order_type, legs, leg_count, event_time, true);
     if (!sent)
     {
         LOG_FILE("PLATFORM_API", "Failed to send multi-leg order: pf=" + std::to_string(pf_id));

@@ -344,10 +344,12 @@ static void conrev_on_market_event(void* handle, PlatformContext* ctx,
         s->put_valid = true;
     }
 
-    std::cout<<"g\n";
-    std::cout<< s->fut_market.bids[0]<<std::endl;
-    std::cout<< s->call_market.bids[0]<<std::endl;
-    std::cout<< s->put_market.bids[0]<<std::endl;
+    unsigned long long event_time = ev->event_time;
+
+    // std::cout<<"g\n";
+    // std::cout<< s->fut_market.bids[0]<<std::endl;
+    // std::cout<< s->call_market.bids[0]<<std::endl;
+    // std::cout<< s->put_market.bids[0]<<std::endl;
     
     // ═══════════════════════════════════════════════════════
     // NEW: ALWAYS COMPUTE AND SEND CURRENT SPREAD
@@ -377,11 +379,11 @@ static void conrev_on_market_event(void* handle, PlatformContext* ctx,
     if (!has_opportunity) return;
     
     // Log opportunity
-    char log_buf[128];
-    snprintf(log_buf, sizeof(log_buf),
-             "OPPORTUNITY: spread=%d (threshold=%d)",
-             current_spread, s->params.spread_threshold);
-    s->api->log_msg(ctx, pf_id, log_buf, strlen(log_buf));
+    // char log_buf[128];
+    // snprintf(log_buf, sizeof(log_buf),
+    //          "OPPORTUNITY: spread=%d (threshold=%d)",
+    //          current_spread, s->params.spread_threshold);
+    // s->api->log_msg(ctx, pf_id, log_buf, strlen(log_buf));
     
     // Place all 3 legs
     uint32_t qty = s->params.max_lots - s->traded_qty;
@@ -437,7 +439,7 @@ static void conrev_on_market_event(void* handle, PlatformContext* ctx,
     }
 
     int32_t ret = s->api->place_new_order_multi_leg(
-        ctx, pf_id, legs, 3, OrderType::IOC
+        ctx, pf_id, legs, 3, OrderType::IOC, event_time
     );
     if(ret<=0) return;
 
@@ -454,6 +456,7 @@ static void conrev_on_market_event(void* handle, PlatformContext* ctx,
     s->call_oms_id     = legs[1].oms_order_id;
     s->put_oms_id      = legs[2].oms_order_id;
     
+    char log_buf[128];
     snprintf(log_buf, sizeof(log_buf),
              "ORDERS_PLACED: fut=%lu call=%lu put=%lu qty=%d spread=%d",
              s->fut_oms_id, s->call_oms_id, s->put_oms_id, qty, current_spread);

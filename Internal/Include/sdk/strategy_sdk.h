@@ -44,6 +44,7 @@ typedef struct {
     uint32_t last_traded_price;
     uint8_t stream_id;
     char msg_type;
+    unsigned long long event_time;
 } __attribute__((packed)) MarketEvent;
 
 /* ═══════════════════════════════════════════════════════════
@@ -141,7 +142,8 @@ typedef struct {
         uint32_t pf_id,
         Leg* legs, 
         uint8_t leg_count, 
-        OrderType order_type
+        OrderType order_type,
+        unsigned long long event_time
     );
     
     int32_t (*place_modify_order)(

@@ -268,7 +268,7 @@ private:
     // Platform API implementations (static for C ABI)
                         
     static int32_t api_place_new_order_multi_leg(PlatformContext* ctx, uint32_t pf_id,
-                                       Leg* legs, uint8_t leg_count, OrderType order_type);
+                                       Leg* legs, uint8_t leg_count, OrderType order_type, unsigned long long event_time);
   
     static int32_t api_place_modify_order(PlatformContext* ctx, uint32_t pf_id,
                                           uint32_t oms_order_id,

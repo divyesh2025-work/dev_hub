@@ -50,7 +50,21 @@ public:
     bool sendCancelPlacement(uint16_t portfolio_id, uint32_t strategy_order_id);
     void reconfigureRateLimiter(size_t new_capacity, double new_window_sec);
 
+    template <size_t N>
+    ALWAYS_INLINE bool sendMultiLegOrder(
+        uint16_t portfolio_id,
+        OrderType order_type,
+        Leg *legs,
+        const unsigned long long exe_time,
+        bool is_bid_leg) noexcept;
+
     static LatencyMonitor latency;
+
+    StrategyOrderIDManager& strategy_order_id_manager;
+
+    ALWAYS_INLINE uint32_t next_strategy_order_id() noexcept {
+        return strategy_order_id_manager.generate();
+    }
 
 private:
     int oms_socket;

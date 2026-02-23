@@ -110,7 +110,7 @@ bool OrderManager::sendSingleLegOrder(uint16_t portfolio_id,
                                       OrderType order_type,
                                       Leg &leg, const unsigned long long exe_time, bool is_bid_leg)
 {
-    int32_t strategy_order_id = StrategyOrderIDManager::instance().generate();
+    int32_t strategy_order_id = next_strategy_order_id();
     leg_order_id = strategy_order_id;
     leg.oms_order_id = leg_order_id;
 
@@ -126,9 +126,9 @@ bool OrderManager::sendTwoLegOrder(uint16_t portfolio_id,
                                    Leg &leg1,
                                    Leg &leg2, const unsigned long long exe_time, bool is_bid_leg)
 {
-    uint32_t strategy_order_id_1 = StrategyOrderIDManager::instance().generate();
+    uint32_t strategy_order_id_1 = next_strategy_order_id();
     leg1_order_id = strategy_order_id_1;
-    uint32_t strategy_order_id_2 = StrategyOrderIDManager::instance().generate();
+    uint32_t strategy_order_id_2 = next_strategy_order_id();
     leg2_order_id = strategy_order_id_2;
     leg1.oms_order_id = strategy_order_id_1;
     leg2.oms_order_id = strategy_order_id_2;
@@ -145,11 +145,11 @@ bool OrderManager::sendThreeLegOrder(uint16_t portfolio_id,
                                      Leg &leg2,
                                      Leg &leg3, const unsigned long long exe_time, bool is_bid_leg)
 {
-    uint32_t strategy_order_id = StrategyOrderIDManager::instance().generate();
+    uint32_t strategy_order_id = next_strategy_order_id();
     leg1_order_id = strategy_order_id;
-    strategy_order_id = StrategyOrderIDManager::instance().generate();
+    strategy_order_id = next_strategy_order_id();
     leg2_order_id = strategy_order_id;
-    strategy_order_id = StrategyOrderIDManager::instance().generate();
+    strategy_order_id = next_strategy_order_id();
     leg3_order_id = strategy_order_id;
     leg1.oms_order_id = leg1_order_id;
     leg2.oms_order_id = leg2_order_id;
@@ -159,6 +159,40 @@ bool OrderManager::sendThreeLegOrder(uint16_t portfolio_id,
 
     return sendOrderPlacement(portfolio_id, order_type, legs, 3, exe_time, is_bid_leg);
 }
+
+template<size_t N>
+ALWAYS_INLINE bool sendMultiLegOrder(
+    uint16_t portfolio_id,
+    OrderType order_type,
+    Leg* legs,
+    const unsigned long long exe_time,
+    bool is_bid_leg) noexcept
+{
+    auto& id_manager = id_gen;   // stored reference inside class
+
+    // // Batch ID allocation (single atomic if possible)
+    // uint32_t base_id = id_manager.generate_batch<N>();
+
+    // #pragma unroll
+    // for (size_t i = 0; i < N; ++i)
+    // {
+    //     legs[i].oms_order_id = base_id + i;
+    // }
+
+    #pragma unroll
+    for (size_t i = 0; i < N; ++i)
+        legs[i].oms_order_id = next_strategy_order_id();
+
+    return sendOrderPlacement(
+        portfolio_id,
+        order_type,
+        legs,
+        N,
+        exe_time,
+        is_bid_leg
+    );
+}
+
 
 void OrderManager::reconfigureRateLimiter(size_t new_capacity, double new_window_sec)
 {

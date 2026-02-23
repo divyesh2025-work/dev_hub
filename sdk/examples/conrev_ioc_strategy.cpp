@@ -84,33 +84,33 @@ static bool compute_opportunity(ConRevIOCState* s, int32_t* spread_out)
     int64_t put_bid  = s->put_market.bids[0];
     int64_t put_ask  = s->put_market.asks[0];
 
-    std::cout << "[compute_opportunity] RAW PRICES:"
-              << " fut_bid="  << fut_bid  << " fut_ask="  << fut_ask
-              << " call_bid=" << call_bid << " call_ask=" << call_ask
-              << " put_bid="  << put_bid  << " put_ask="  << put_ask
-              << " strike="   << s->params.strike_price
-              << " is_conversion=" << s->params.is_conversion
-              << "\n";
+    // std::cout << "[compute_opportunity] RAW PRICES:"
+    //           << " fut_bid="  << fut_bid  << " fut_ask="  << fut_ask
+    //           << " call_bid=" << call_bid << " call_ask=" << call_ask
+    //           << " put_bid="  << put_bid  << " put_ask="  << put_ask
+    //           << " strike="   << s->params.strike_price
+    //           << " is_conversion=" << s->params.is_conversion
+    //           << "\n";
     
     int64_t spread;  // use int64_t not int32_t - overflow suspect
     if (s->params.is_conversion) {
         spread = int64_t(s->params.strike_price) - fut_ask + call_bid - put_ask;
-        std::cout << "[compute_opportunity] CONVERSION spread="
-                  << s->params.strike_price << " - " << fut_ask
-                  << " + " << call_bid << " - " << put_ask
-                  << " = " << spread << "\n";
+        // std::cout << "[compute_opportunity] CONVERSION spread="
+        //           << s->params.strike_price << " - " << fut_ask
+        //           << " + " << call_bid << " - " << put_ask
+        //           << " = " << spread << "\n";
     } else {
         spread = -int64_t(s->params.strike_price) + fut_bid - call_ask + put_bid;
-        std::cout << "[compute_opportunity] REVERSAL spread= -"
-                  << s->params.strike_price << " + " << fut_bid
-                  << " - " << call_ask << " + " << put_bid
-                  << " = " << spread << "\n";
+        // std::cout << "[compute_opportunity] REVERSAL spread= -"
+        //           << s->params.strike_price << " + " << fut_bid
+        //           << " - " << call_ask << " + " << put_bid
+        //           << " = " << spread << "\n";
     }
 
-    std::cout << "[compute_opportunity] spread=" << spread
-              << " threshold=" << s->params.spread_threshold
-              << " result=" << (spread >= int64_t(s->params.spread_threshold))
-              << "\n";
+    // std::cout << "[compute_opportunity] spread=" << spread
+    //           << " threshold=" << s->params.spread_threshold
+    //           << " result=" << (spread >= int64_t(s->params.spread_threshold))
+    //           << "\n";
     
     *spread_out = (int32_t)spread;
     return spread >= int64_t(s->params.spread_threshold);
@@ -332,7 +332,7 @@ static void conrev_on_market_event(void* handle, PlatformContext* ctx,
     
     if (!s->active) return;
     
-    // Cache market data
+    // Cache market data [[ TODO COPY OF *ev means data into other latency sensative]]
     if (ev->token == s->params.fut_token) {
         s->fut_market = *ev;
         s->fut_valid = true;
@@ -357,18 +357,18 @@ static void conrev_on_market_event(void* handle, PlatformContext* ctx,
     int32_t current_spread = 0;
     bool has_opportunity = compute_opportunity(s, &current_spread);
     
-    // Send status update with current spread
-    StrategyStatusUpdate status;
-    status.pf_id = pf_id;
-    status.traded_qty = s->traded_qty;
-    status.achieved_spread = s->achieved_spread;
-    status.current_spread = current_spread;      // NEW
-    status.has_opportunity = has_opportunity;    // NEW
-    status.is_complete = (s->traded_qty >= s->params.max_lots);
-    status.custom_data_len = 0;
+    // // Send status update with current spread [[ IMPORTANT SENDING SPREAD]]
+    // StrategyStatusUpdate status;
+    // status.pf_id = pf_id;
+    // status.traded_qty = s->traded_qty;
+    // status.achieved_spread = s->achieved_spread;
+    // status.current_spread = current_spread;      // NEW
+    // status.has_opportunity = has_opportunity;    // NEW
+    // status.is_complete = (s->traded_qty >= s->params.max_lots);
+    // status.custom_data_len = 0;
     
-    s->api->send_status_update(ctx, pf_id, &status);
-    // ═══════════════════════════════════════════════════════
+    // s->api->send_status_update(ctx, pf_id, &status);
+    // // ═══════════════════════════════════════════════════════
     
     // Only place orders if:
     // 1. Not already sent (IOC = one shot)
@@ -397,21 +397,21 @@ static void conrev_on_market_event(void* handle, PlatformContext* ctx,
                     s->fut_market.asks[0],
                     qty,
                     OrderSide::Buy,
-                    rdtsc(),
+                    0,
                     0 };
 
         legs[1] = { s->params.call_token,
                     s->call_market.bids[0],
                     qty,
                     OrderSide::Sell,
-                    rdtsc(),
+                    0,
                     0 };
 
         legs[2] = { s->params.put_token,
                     s->put_market.asks[0],
                     qty,
                     OrderSide::Buy,
-                    rdtsc(),
+                    0,
                     0 };
     }
     else
@@ -420,21 +420,21 @@ static void conrev_on_market_event(void* handle, PlatformContext* ctx,
                     s->fut_market.bids[0],
                     qty,
                     OrderSide::Sell,
-                    rdtsc(),
+                    0,
                     0 };
 
         legs[1] = { s->params.call_token,
                     s->call_market.asks[0],
                     qty,
                     OrderSide::Buy,
-                    rdtsc(),
+                    0,
                     0 };
 
         legs[2] = { s->params.put_token,
                     s->put_market.bids[0],
                     qty,
                     OrderSide::Sell,
-                    rdtsc(),
+                    0,
                     0 };
     }
 

@@ -110,9 +110,6 @@ bool OrderManager::sendSingleLegOrder(uint16_t portfolio_id,
                                       OrderType order_type,
                                       Leg &leg, const unsigned long long exe_time, bool is_bid_leg)
 {
-    int32_t strategy_order_id = next_strategy_order_id();
-    leg_order_id = strategy_order_id;
-    leg.oms_order_id = leg_order_id;
 
     LOG_FILE(module, "leg.oms_order_id " + std::to_string(leg.oms_order_id));
     LOG_FILE(module, "Leg info of sending order:(qty,price)" + std::to_string(leg.qty) + "," + std::to_string(leg.price));
@@ -126,12 +123,6 @@ bool OrderManager::sendTwoLegOrder(uint16_t portfolio_id,
                                    Leg &leg1,
                                    Leg &leg2, const unsigned long long exe_time, bool is_bid_leg)
 {
-    uint32_t strategy_order_id_1 = next_strategy_order_id();
-    leg1_order_id = strategy_order_id_1;
-    uint32_t strategy_order_id_2 = next_strategy_order_id();
-    leg2_order_id = strategy_order_id_2;
-    leg1.oms_order_id = strategy_order_id_1;
-    leg2.oms_order_id = strategy_order_id_2;
     Leg legs[2] = {leg1, leg2};
     return sendOrderPlacement(portfolio_id, order_type, legs, 2, exe_time, is_bid_leg);
 }

@@ -44,6 +44,11 @@ public:
                            Leg &leg2,
                            Leg &leg3, const unsigned long long exe_time, bool is_bid_leg);
 
+    bool sendOrderPlacement(uint16_t portfolio_id,
+                            OrderType order_type,
+                            const Leg *legs,
+                            uint8_t num_legs, const unsigned long long exe_time, bool is_bid_leg);
+
     bool sendModifyPlacement(uint16_t portfolio_id, uint32_t strategy_order_id,
                              const Leg leg, const unsigned long long exe_time, int leg_num = 0);
 
@@ -74,10 +79,7 @@ private:
 
     std::string module = "OrderManager";
 
-    bool sendOrderPlacement(uint16_t portfolio_id,
-                            OrderType order_type,
-                            const Leg *legs,
-                            uint8_t num_legs, const unsigned long long exe_time, bool is_bid_leg);
+    
 
     uint64_t get_timestamp_ns();
 };

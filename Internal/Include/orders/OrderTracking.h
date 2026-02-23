@@ -4,8 +4,8 @@
 #include "OrderEnums.h"
 #include "../core/BasicTypes.h"
 #include "../core/Macros.h"
-#include "/home/dev_3/NeoPlatform/sdk/strategy_sdk.h"
-// /home/dev_3/NeoPlatform/sdk/strategy_sdk.h
+#include "../sdk/strategy_sdk.h"
+
 #pragma pack(push, 1)
 
 struct StrategyLegData

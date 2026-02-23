@@ -79,7 +79,8 @@ HFTStrategyEngine::~HFTStrategyEngine()
 
 void HFTStrategyEngine::setup_platform_api()
 {
-    s_platform_api.place_new_order    = api_place_new_order;
+    s_platform_api.place_new_order_single_leg = api_place_new_order_single_leg;
+    s_platform_api.place_new_order_multi_leg = api_place_new_order_multi_leg;
     s_platform_api.place_modify_order = api_place_modify_order;
     s_platform_api.place_cancel_order = api_place_cancel_order;
     s_platform_api.get_position       = api_get_position;
@@ -3093,62 +3094,61 @@ std::string HFTStrategyEngine::get_nse_fo_contract_name()
  * PLATFORM API IMPLEMENTATIONS
  * ════════════════════════════════════════════════════════════ */
 
-int64_t HFTStrategyEngine::api_place_new_order(
-    PlatformContext* ctx, uint32_t pf_id,
-    uint32_t token, uint8_t side,
-    int64_t price, int32_t qty)
-{
+
+int32_t HFTStrategyEngine::api_new_order_multi_leg(PlatformContext* ctx, uint32_t pf_id,
+                                       uint32_t token, uint8_t side,
+                                       const OrderLeg* legs, uint8_t leg_count, uint8_t order_type)
+{   
+
+    // want to use this function sendOrderPlacement of order manager
     HFTStrategyEngine* engine = (HFTStrategyEngine*)ctx;
-    
     // Validate portfolio slot
     if (pf_id >= MAX_PORTFOLIOS || !engine->portfolio_slots[pf_id].allocated) {
-        return -1;
+        return -1; 
     }
-    
-    // Generate OMS ID
-    uint32_t oms_id = StrategyOrderIDManager::instance().generate();
-    
-    // Create leg
-    Leg leg;
-    leg.symbol_id = token;
-    leg.side = (OrderSide)side;
-    leg.price = price;
-    leg.qty = qty;
-    leg.oms_order_id = oms_id;
-    // leg.is_pro_account = 0;  // Set based on your logic
-    
-    // Send via OrderManager
-    bool sent = engine->order_manager->sendSingleLegOrder(
-        pf_id, oms_id, OrderType::IOC, leg, __rdtsc(), true);
-    
+    // we support 3/2/1 leg ioc, single leg bidding only 
+    if (leg_count == 0 || leg_count > 3) {
+        return -4; // Invalid leg count
+    }
+    // Generate OMS ID for the multi-leg order (can be used as a group ID)
+
+    for(int i = 0; i < leg_count; i++) {
+        if (legs[i].qty <= 0 || legs[i].price <= 0) {
+            return -5; // Invalid leg parameters
+        }
+        legs[i].oms_order_id = StrategyOrderIDManager::instance().generate();
+    }
+
+    bool sent = engine->order_manager->sendOrderPlacement(pf_id, (OrderType)order_type, legs, leg_count, __rdtsc(), true);
     if (!sent) {
-        LOG_FILE("PLATFORM_API", "Failed to send order: pf=" + std::to_string(pf_id));
+        LOG_FILE("PLATFORM_API", "Failed to send multi-leg order: pf=" + std::to_string(pf_id));
         return -2;
     }
-    
-    // Track in oms_to_leg
-    engine->oms_to_leg[oms_id] = StrategyLegData{
-        .token = token,
-        .side = (OrderSide)side,
-        .portfolio_id = static_cast<uint16_t> (pf_id),
-        .fill_price_sum = 0,
-        .fill_qty_sum = 0,
-        .ordered_price = static_cast<uint32_t>( price),
-        .required_qty = static_cast<uint32_t>( qty),
-        .oms_order_id = oms_id,
-        .exchange_order_id = 0,
-        .exchange_modified_time = 0,
-        .order_state = OrderState::NewOms
-    };
-    
-    LOG_FILE("PLATFORM_API", "Order placed: pf=" + std::to_string(pf_id) + 
-             " oms=" + std::to_string(oms_id) + " token=" + std::to_string(token) +
-             " side=" + std::to_string(side) + " price=" + std::to_string(price) +
-             " qty=" + std::to_string(qty));
-    
-    return (int64_t)oms_id;
-}
 
+    for(int i = 0; i < leg_count; i++) {
+        const auto& leg = legs[i];
+        engine->oms_to_leg[leg.oms_order_id] = StrategyLegData{
+            .token = leg.symbol_id,
+            .side = (OrderSide)leg.side,
+            .portfolio_id = static_cast<uint16_t>(pf_id),
+            .fill_price_sum = 0,
+            .fill_qty_sum = 0,
+            .ordered_price = static_cast<uint32_t>(leg.price),
+            .required_qty = static_cast<uint32_t>(leg.qty),
+            .oms_order_id = leg.oms_order_id,
+            .exchange_order_id = 0,
+            .exchange_modified_time = 0,
+            .order_state = OrderState::NewOms
+        };
+
+        LOG_FILE("PLATFORM_API", "Multi-leg order placed: pf=" + std::to_string(pf_id) + 
+                 " oms=" + std::to_string(leg.oms_order_id) + " token=" + std::to_string(leg.symbol_id) +
+                 " side=" + std::to_string(leg.side) + " price=" + std::to_string(leg.price) +
+                 " qty=" + std::to_string(leg.qty));
+    }
+
+    return 0;
+}
 
 
 int32_t HFTStrategyEngine::api_place_modify_order(

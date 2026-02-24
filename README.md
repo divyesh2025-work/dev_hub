@@ -41,4 +41,6 @@ trading_platform/
     └── my_strategy.py            # Pure Python strategy (for development)
 
 
-    
+
+
+cd /workspaces/dev_hub && python3 compile_python_strategy.py sdk/examples/conrev_ioc_strategy.py bin/strategies/conrev_ioc_native.so 2>&1

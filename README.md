@@ -19,3 +19,26 @@
 
   {92650, 0, 18, 1443709800, "FEDERAKBANK", 600}, // Index future
     {92658, 0, 18, 1443709800, "FEDERAKBANK", 1100} // Index future
+
+
+
+
+
+
+
+trading_platform/
+├── strategy_sdk.h                 # Your existing C header
+├── strategies/
+│   └── conrev_ioc_cpp/
+│       └── conrev_ioc.cpp        # Your existing C++ strategy
+├── python_sdk/
+│   ├── setup.py                  # Cython build configuration
+│   ├── strategy_types.pxd        # Cython declarations (C types)
+│   ├── platform_api.pyx          # Python wrapper for PlatformAPI
+│   └── base_strategy.pyx         # Base class for Python strategies
+└── python_strategies/
+    ├── conrev_ioc_python.pyx     # ConRev IOC in Cython
+    └── my_strategy.py            # Pure Python strategy (for development)
+
+
+    

@@ -44,3 +44,11 @@ trading_platform/
 
 
 cd /workspaces/dev_hub && python3 compile_python_strategy.py sdk/examples/conrev_ioc_strategy.py bin/strategies/conrev_ioc_native.so 2>&1
+
+
+File	Purpose
+compile_python_strategy.py	Build tool
+python_strategy_wrapper.cpp	C++ wrapper
+PYTHON_TO_SO_GUIDE.md	Complete guide
+PYTHON_SO_CPP_INTEGRATION.cpp	Copy to your engine
+bin/strategies/conrev_ioc_native.so	Working .so

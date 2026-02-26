@@ -29,7 +29,7 @@
 #define LOG_COUT_1(module, msg)
 #endif
 
-#define ENABLE_LOGGING_FILE 0 //
+#define ENABLE_LOGGING_FILE 1 //
 #if ENABLE_LOGGING_FILE
 #define LOG_FILE(module, msg) Logger::instance().logToFile(module, msg)
 #else

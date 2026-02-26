@@ -52,3 +52,13 @@ python_strategy_wrapper.cpp	C++ wrapper
 PYTHON_TO_SO_GUIDE.md	Complete guide
 PYTHON_SO_CPP_INTEGRATION.cpp	Copy to your engine
 bin/strategies/conrev_ioc_native.so	Working .so
+
+
+Summary of your working multicast setup:
+Setting Value
+Interface eth0
+Local IP  10.0.1.210
+Multicast Group 239.1.1.1
+Port 5000
+Protocol UDP
+You can now use any port in the UDP range (1024–65535) for your app — just make sure nothing else is using it:

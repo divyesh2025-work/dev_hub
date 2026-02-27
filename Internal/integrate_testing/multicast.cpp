@@ -401,7 +401,7 @@ int main() {
     // Configuration for futures market data
     const char* multicast_group = "239.1.1.1"; // Different from cash
     int port = 5000; // Different port for futures
-    const char* interface_ip = "10.0.1.210";
+    const char* interface_ip = "10.0.1.54";
     
     if (!sender.initialize(multicast_group, port, interface_ip)) {
         std::cerr << "Failed to initialize futures market data sender" << std::endl;

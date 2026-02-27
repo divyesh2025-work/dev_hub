@@ -118,7 +118,8 @@ struct BoxIOCParams {
  * TYPE IDs (must match your strategy .so files)
  * ═══════════════════════════════════════════════════════════ */
 
-#define TYPE_CONREV_IOC     100
+// #define TYPE_CONREV_IOC     100
+#define TYPE_CONREV_IOC     1
 #define TYPE_CONREV_BID     101
 #define TYPE_BOX_BIDDING    102
 #define TYPE_BOX_IOC        103

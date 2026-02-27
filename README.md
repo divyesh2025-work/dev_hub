@@ -62,3 +62,8 @@ Multicast Group 239.1.1.1
 Port 5000
 Protocol UDP
 You can now use any port in the UDP range (1024–65535) for your app — just make sure nothing else is using it:
+
+
+59315
+92629
+92638

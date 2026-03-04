@@ -136,6 +136,7 @@ class ConRevIOCStrategy(StrategyAPI):
             return f"Error: {str(e)}"
 
     def on_stop(self) -> str:
+        print("Stopping strategy (Python)")
         """Stop strategy and cancel pending orders"""
         try:
             if not self.active:
@@ -183,6 +184,8 @@ class ConRevIOCStrategy(StrategyAPI):
 
     def on_market_event(self, market: MarketData):
         """Process market data and identify opportunities"""
+        print(f"Received market data: token={market.token}  (PYTHON)")
+        # self.log(f"MARKET EVENT: token={market.token} bid={market.bid()} ask={market.ask()}")
         if not self.active:
             return
         
@@ -253,6 +256,7 @@ class ConRevIOCStrategy(StrategyAPI):
     # ══════════════════════════════════════════════════════════
 
     def _compute_opportunity(self) -> Optional[int]:
+        print("Computing opportunity (Python)")
         """Compute spread and determine if opportunity exists"""
         if not all([self.fut_market, self.call_market, self.put_market]):
             return None

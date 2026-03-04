@@ -57,7 +57,7 @@ bin/strategies/conrev_ioc_native.so	Working .so
 Summary of your working multicast setup:
 Setting Value
 Interface eth0
-Local IP  10.0.1.210
+Local IP  10.0.2.207
 Multicast Group 239.1.1.1
 Port 5000
 Protocol UDP
@@ -67,3 +67,8 @@ You can now use any port in the UDP range (1024–65535) for your app — just m
 59315
 92629
 92638
+
+
+python3 compile_python_strategy.py <strategy.py> <output.so> --type-id N
+
+python3 compile_python_strategy.py sdk/examples/conrev_ioc_strategy.py ./strategies/conrev_ioc.so --type-id 1

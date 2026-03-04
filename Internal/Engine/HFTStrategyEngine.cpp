@@ -1505,6 +1505,9 @@ void HFTStrategyEngine::run()
                         continue; // Drop malformed packets
                     }
 
+                    std::cout<<data.token<<" , "<<data.seqno<<" , "<<data.internal_seqno<<" , "<<static_cast<int>(data.msg_type)<<" , "<<static_cast<int>(data.stream_id)<<std::endl;
+                    std::cout<<orderbook.size()<<std::endl;
+
                     TimePoint &last = stream_to_sequence[data.stream_id].last_time;
                     uint32_t &last_seq = stream_to_sequence[data.stream_id].seq_no;
 
@@ -1579,7 +1582,8 @@ void HFTStrategyEngine::run()
                             ev.last_traded_price = data.last_traded_price;
                             ev.start_time = data.timestamp;
                             ev.event_time = st;
-
+                            
+                            std::cout<<"Executing market event callback for portfolio id :" << portfolio_id << std::endl;
                             // HOT PATH: Direct function pointer call to .so
                             slot.fn_table.on_market_event(
                                 slot.strategy_handle,
